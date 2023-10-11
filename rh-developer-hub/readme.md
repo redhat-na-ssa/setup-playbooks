@@ -57,12 +57,12 @@ Log in to your OpenShift cluster via the `oc` client.  Set the `OPENSHIFT_CLUSTE
 export OPENSHIFT_CLUSTER_INFO=$(oc cluster-info | head -n 1 | sed 's/^.*https...api//' | sed 's/.6443.*$//' )
 ```
 
-!!! tip "Using Linux?"
-    If you are using a `Linux` environment, set the alias for the following commands to work:
+>❗ tip "Using Linux?"
+  If you are using a `Linux` environment, set the alias for the following commands to work:
 
-    ``` sh
-    alias open="xdg-open"
-    ```
+  ```sh
+  alias open="xdg-open"
+  ```
 
 For the remaining environment variables, it may be preferable create a `./env.sh` containeing the listed env vars as you complete the setup configuration, then run `source ./env.sh`.
 
