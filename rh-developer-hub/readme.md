@@ -153,7 +153,30 @@ export GITHUB_BACKSTAGE_CLIENT_SECRET=
 
 # Red Hat Developer Hub
 ## Installation
+### Quay.io account
+As part of the Early Access Program you are required to have an Quay.io Account in order to be able to
+pull the Red Hat Developer Hub container image.
 
+ 1. Make sure you have been granted acess to the RHDH Organization. You can check that by trying https://quay.io/organization/rhdh
+ > If you are not able to acess this Quay.io org, please ask for it by sending an email to `	rhdh-interest@redhat.com` and fill out this Google Form https://forms.gle/hTnjWuV84DJbRT5Q7 
+ 2. Next, download a pull secret from you quay.io account and apply to the Openshift Project where Dev Hub will be installed to.
+  * From quay.io access `Account Settings -> Generate Encrypted Password -> Kubernetes Secret -> Donwload <username>-secret.yml
+  * change the name of the Secret to `quay-pull-secret`
+  ```yaml
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: quay-pull-secret #<--- has to be named exactly this way
+  data:
+    .dockerconfigjson: your quay secret here
+  type: kubernetes.io/dockerconfigjson
+  ```
+  * finaly apply it
+  ```
+  oc apply -f username-secret.yml -n rhdh
+  ```
+
+### Install using the Red Hat Developer Hub Helm Chat from the Openshift Helm Chart marketplace
 ## Initial configuration
 
 ### Main Config Secret
