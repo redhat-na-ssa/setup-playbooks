@@ -155,12 +155,12 @@ pull the Red Hat Developer Hub container image.
 
  2. Next, download a pull secret from you quay.io account and apply to the Openshift Project where Dev Hub will be installed to.
   * From quay.io access `Account Settings -> Generate Encrypted Password -> Kubernetes Secret -> Donwload <username>-secret.yml
-  * change the name of the Secret to `quay-pull-secret`
+  * change the name of the Secret to `rhdh-pull-secret`
   ```yaml
   apiVersion: v1
   kind: Secret
   metadata:
-    name: quay-pull-secret #<--- has to be named exactly this way
+    name: rhdh-pull-secret #<--- has to be named exactly this way
   data:
     .dockerconfigjson: your quay secret here
   type: kubernetes.io/dockerconfigjson
