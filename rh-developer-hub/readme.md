@@ -89,7 +89,7 @@ export GITHUB_ORG_URL=https://$GITHUB_HOST_DOMAIN/$GITHUB_ORGANIZATION
 1. Create a new GitHub Application to use the `Git WebHooks` functionality in this demo.  The required field will be populated, and correct permissions set.
 
     ``` sh
-    open "https://$GITHUB_HOST_DOMAIN/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-rhdh-app&url=https://janus-idp.io/blog&webhook_active=true&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
+    open "https://$GITHUB_HOST_DOMAIN/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-rhdh-app&url=https://janus-idp.io/blog&webhook_active=true&public=false&callback_url=https://developer-hub-rhdh.apps$OPENSHIFT_CLUSTER_INFO/api/auth/github/handler/frame&webhook_url=https://developer-hub-rhdh.apps$OPENSHIFT_CLUSTER_INFO&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write&members=read"
     ```
 
  > you can also use `echo` instead od `open` to print out the URL, then copy&paste into your web browser address bar.
@@ -143,7 +143,7 @@ As part of the Early Access Program you are required to have an Quay.io Account 
 pull the Red Hat Developer Hub container image.
 
  1. Make sure you have been granted acess to the RHDH Organization. You can check that by trying https://quay.io/organization/rhdh
- > If you are not able to acess this Quay.io org, please ask for it by sending an email to `	rhdh-interest@redhat.com` and fill out this Google Form https://forms.gle/hTnjWuV84DJbRT5Q7 
+ > If you are not able to acess this Quay.io org, please ask for it by sending an email to `rhdh-interest@redhat.com` and fill out this Google Form https://forms.gle/hTnjWuV84DJbRT5Q7 
 
  2. Next, download a pull secret from you quay.io account and apply to the Openshift Project where Dev Hub will be installed to.
   * From quay.io access `Account Settings -> Generate Encrypted Password -> Kubernetes Secret -> Donwload <username>-secret.yml
@@ -627,7 +627,7 @@ data:
 Create a GitHub **OAuth** application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
 
 ``` sh
-open "https://$GITHUB_HOST_DOMAIN/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-devspaces&oauth_application[url]=https://devspaces.apps.$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps.$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
+open "https://$GITHUB_HOST_DOMAIN/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-devspaces&oauth_application[url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
 ```
 
 Set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with the values from the OAuth application.
