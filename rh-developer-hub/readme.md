@@ -7,16 +7,17 @@
 1. Sandbox **non-production** cluster
 2. minimum cluster size recommended _for a PoC_:
  * 3x Control Plane nodes with 
-   * 16 vCPUs
-   * 64Gb RAM
+     * 16 vCPUs
+     * 64Gb RAM
  * 3x Worker nodes with
-   * 32 vCPUs
-   * 128Gb RAM
+     * 32 vCPUs
+     * 128Gb RAM
 3. Container Registry
  * Red Hat Quay `<-- recommended`
-   * ❗**Requires an S3 compatible backend storage class configured in the cluster**
-   * eg: Red Hat ODF
+     * ❗**Requires an S3 compatible backend storage class configured in the cluster**
+     * eg: Red Hat ODF
  * Openshift Internal Container Registry
+  
 > :white_check_mark: NOTE: RHDH includes support for these two options OOB
 
 ## Openshift DevSecOps Layered components 
@@ -35,14 +36,14 @@
 
 ## External 3rd party Integrations
 * Source Control System
- * (Enterprise/hosted) GitHub `requires additional setup`
- * (Enterprise/hosted) Gitlab `requires additional setup`
+  * (Enterprise/hosted) GitHub `requires additional setup`
+  * (Enterprise/hosted) Gitlab `requires additional setup`
 * Continuous Integration
- * Github Actions
- * Gitlab CI
+  * Github Actions
+  * Gitlab CI
 * Identity Provider
- * ❗**Requires OIDC support**
- *  Red Hat SSO (based on Keycloak) is recommended as an Access Manager and iDP broker
+  * ❗**Requires OIDC support**
+  *  Red Hat SSO (based on Keycloak) is recommended as an Access Manager and iDP broker
 
 ---
 
@@ -151,6 +152,7 @@ pull the Red Hat Developer Hub container image.
 
  1. Make sure you have been granted acess to the RHDH Organization. You can check that by trying https://quay.io/organization/rhdh
  > If you are not able to acess this Quay.io org, please ask for it by sending an email to `	rhdh-interest@redhat.com` and fill out this Google Form https://forms.gle/hTnjWuV84DJbRT5Q7 
+
  2. Next, download a pull secret from you quay.io account and apply to the Openshift Project where Dev Hub will be installed to.
   * From quay.io access `Account Settings -> Generate Encrypted Password -> Kubernetes Secret -> Donwload <username>-secret.yml
   * change the name of the Secret to `quay-pull-secret`
@@ -163,6 +165,7 @@ pull the Red Hat Developer Hub container image.
     .dockerconfigjson: your quay secret here
   type: kubernetes.io/dockerconfigjson
   ```
+
   * finaly apply it
   ```
   oc apply -f username-secret.yml -n rhdh
@@ -313,7 +316,6 @@ upstream:
         value: '0'     
     extraEnvVarsSecrets:
       - rhdh-secret # DOUBLE CHECK THIS SECRET NAME!!!
-      #- logo-secret
     image:
       debug: true
       pullPolicy: Always
@@ -387,30 +389,36 @@ upstream:
 
 Now wait for the RHDH POD to be restarted and test it.
 
-
 ### Import Sample GPTs
- 1. Add a new location entry in the apr-config-rhdh Config Map.
+ 1. Fork this repo into your GitHub org: https://github.com/redhat-na-ssa/software-templates
+ 2. Add a new location entry in the apr-config-rhdh Config Map.
 
 ```yaml
       locations:
         - type: url
-          target: https://github.com/redhat-na-ssa/software-templates/blob/main/showcase-templates.yaml
+          target: https://github.com/YOUR_GITHUB_ORG/software-templates/blob/main/showcase-templates.yaml
 ```
- 2. Save the CM
- 3. Restart the DevHub POD
- 4. In the DevHub dashboad, got to Create (left menu) and see all the imported **sample** Golden Path Templates
 
-### Create a sample Catalog Item based on SpringBoot backend
- 1. In the Golden Path Templates page, seach for SpringBoot
- 2. Click on Choose and start filling out the Wizard prompts
- 3. At the end hit Create
+ 3. Save the CM
+ 4. Restart the DevHub POD
+ 5. In the DevHub dashboad, got to Create (left menu) and see all the imported **sample** Golden Path Templates
+
+### Create a sample Catalog Item based on the SpringBoot backend Template
+ 1. In the Golden Path Templates page, seach for `SpringBoot`
+ 2. Click on `Choose` and start filling out the Wizard prompts
+ 3. At the end hit the `Create` button
  4. Create -> select the App entity -> About card -> Hit refresh icon, Refresh the page
- 5. Check all the new tab that shows in the screen
+ 5. Check all the new tab that shows up in the screen
  6. Go back to the Catalog
 
 ### Enabling Kubernetes Plugin
 
  1. create a new SA
+ > using the CLI
+``` sh
+oc create sa rhdh-k8s-plugin -n rhdh
+```
+
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
@@ -418,7 +426,16 @@ metadata:
   name: rhdh-k8s-plugin
   namespace: rhdh
 ```
- 2. Create a Secret Token and bind it to the SA
+
+ 2. Create a Secret Token and bind it to the ServiceAccount
+
+using the CLI
+``` sh
+oc create token rhdh-k8s-plugin -n rhdh
+```
+
+> Copy the token from the output and save it for later!
+
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -431,6 +448,8 @@ metadata:
 ```
 
  3. Create a ClusterRole
+ > use the Openshift Administrator Console `Import YAML` (click the `+` icon located at the far top-right menu)
+
 ```yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1 
@@ -503,7 +522,7 @@ rules:
       - taskruns
 ```
 
- 4. Create a ClusterRoleBinding
+ 4. Create a ClusterRoleBinding for the ServiceAccount
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -519,7 +538,17 @@ subjects:
     namespace: rhdh
 ```
 
- 5. Create a new secret with Cluster config
+ 5. Create a new Secret with the Cluster info
+ > using the CLI
+
+``` sh
+oc create secret generic backstage-k8s-plugin-secret -n rhdh \
+--from-literal=K8S_CLUSTER_NAME='development-cluster' \
+--from-literal=K8S_CLUSTER_TOKEN='<ServiceAccount token from step 2>' \
+--from-literal=K8S_CLUSTER_URL=$(oc cluster-info | head -n 1 |  sed 's/^.*https/https/')
+
+```
+
 ```yaml
 kind: Secret
 apiVersion: v1
@@ -527,9 +556,9 @@ metadata:
   name: backstage-k8s-plugin-secret
   namespace: rhdh
 data:
-  K8S_CLUSTER_NAME: # development-cluster
-  K8S_CLUSTER_TOKEN: # comes from the secret token create at step #2 (k8s-plugin-secret)
-  K8S_CLUSTER_URL: # copy your cluster api url (with the :6343)
+  K8S_CLUSTER_NAME: 'development-cluster'
+  K8S_CLUSTER_TOKEN: 'comes from the secret token create at step #2 (k8s-plugin-secret)'
+  K8S_CLUSTER_URL: 'copy your cluster api url (with the :6343)'
 type: Opaque
 ``` 
 
@@ -558,7 +587,7 @@ data:
           type: multiTenant
 ```
 
- 7. Upgrade the DevHub Helm values by adding the secret under `extraEnvVarsSecrets:`
+ 1. Upgrade the DevHub Helm values by adding the secret name `backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
 
 ```yaml
     extraEnvVarsSecrets:
