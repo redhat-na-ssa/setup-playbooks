@@ -72,11 +72,12 @@ Create a new [Github Organization](https://github.com/account/organizations/new?
 
 The `GITHUB_ORGANIZATION` environment variable will be set to the name of the organization.
 
-!!! tip
-    You may also use any organization you are a member of, as long as you have the ability to create new repositories within it.
+> ❗tip
+  You may also use any organization you are a member of, as long as you have the ability to create new repositories within it.
 
 ``` sh
 export GITHUB_ORGANIZATION=
+export GITHUB_ORG_URL=https://github.com/$GITHUB_ORGANIZATION
 ```
 
 ## Set Up GitHub Application
@@ -84,15 +85,20 @@ export GITHUB_ORGANIZATION=
 1. Create a new GitHub Application to use the `Git WebHooks` functionality in this demo.  The required field will be populated, and correct permissions set.
 
     ``` sh
-    open "https://github.com/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-webhook&url=https://janus-idp.io/blog&webhook_active=false&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
+    open "https://github.com/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-webhook&url=https://janus-idp.io/blog&webhook_active=true&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
     ```
 
-2. Set the `GITHUB_APP_ID` and `GITHUB_APP_CLIENT_ID` environment variables to the App ID  and App Client ID, respectively. Generate a new client secret and set the `GITHUB_APP_CLIENT_SECRET` environment variable.  Then, generate a `Private Key` for this app and **download** the private key file.  Set the `GITHUB_KEY_FILE` environment variable to the downloaded file, using either the absolute path or the path relative to the `ansible/cluster-setup` directory.
+ * Remember to fill out the following fields:
+  * Callback URL: `https://developer-hub-rhdh.apps.your-cluster-domain/api/auth/github/handler/frame`
+  * Webhook URL: `https://developer-hub-rhdh.apps.your-cluster-domain/`
+  * Webhook Secret: `a radom string` (save it to use later in the DevHub config!)
+
+2. Set the `GITHUB_APP_ID` and `GITHUB_APP_CLIENT_ID` environment variables to the App ID  and App Client ID, respectively. Generate a new client secret and set the `GITHUB_APP_CLIENT_SECRET` environment variable.  Then, generate a `Private Key` for this app and **download** the private key file.
     ``` sh
     export GITHUB_APP_ID=
     export GITHUB_APP_CLIENT_ID=
     export GITHUB_APP_CLIENT_SECRET=
-    export GITHUB_KEY_FILE=
+    export GITHUB_APP_PRIVATE_KEY=$(cat /path/to/github-app-key.pem)
     ```
 
     ![Organization Client Info](assets/org-client-info.png)
@@ -103,13 +109,13 @@ export GITHUB_ORGANIZATION=
 
 ## Create Github **OAuth** Applications
 
-In this section we'll create and setup **three different** GitHub Applications that will be later integrated with our components.
+In this section we'll create and setup **two different** GitHub **OAuth** Applications that will be later integrated with DevSpaces and RHSSO (Keycloak).
 
-### Identity Provider
+### RHSSO Access Manager
 Create an GitHub OAuth application in order to use GitHub as an Identity Provider for Red Hat Developer Hub.
 
 ``` sh
-open "https://github.com/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-identity-provider&oauth_application[url]=https://rhdh.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://keycloak-backstage.apps$OPENSHIFT_CLUSTER_INFO/auth/realms/backstage/broker/github/endpoint"
+open "https://github.com/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-identity-provider&oauth_application[url]=https://rhdh.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://keycloak-rhdh.apps$OPENSHIFT_CLUSTER_INFO/auth/realms/rhdh/broker/github/endpoint"
 ```
 
 Set the `GITHUB_KEYCLOAK_CLIENT_ID` and `GITHUB_KEYCLOAK_CLIENT_SECRET` environment variables with the values from the OAuth application.
@@ -133,20 +139,6 @@ Set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` envi
 ``` sh
 export GITHUB_DEV_SPACES_CLIENT_ID=
 export GITHUB_DEV_SPACES_CLIENT_SECRET=
-```
-
-### Developer Hub plugins
-Create a **third** GitHub OAuth application to enable the numerous Red Hat Developer Hub plugins utilizing GitHub to authenticate and access the relevant data.
-
-``` sh
-open "https://github.com/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-backstage&oauth_application[url]=https://rhdh.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://rhdh.apps$OPENSHIFT_CLUSTER_INFO/api/auth/github/handler/frame"
-```
-
-Set the `GITHUB_BACKSTAGE_CLIENT_ID` and `GITHUB_BACKSTAGE_CLIENT_SECRET` environment variables with the values from the OAuth application.
-
-``` sh
-export GITHUB_BACKSTAGE_CLIENT_ID=
-export GITHUB_BACKSTAGE_CLIENT_SECRET=
 ```
 
 ---
@@ -178,10 +170,249 @@ pull the Red Hat Developer Hub container image.
 
 ### Install using the Red Hat Developer Hub Helm Chat from the Openshift Helm Chart marketplace
 ## Initial configuration
+Use the Developer Hub Helm Chart to create an instance and wait for the Postgres and DevHub PODs to come up to a healthy state.
 
 ### Main Config Secret
-### Main Config Map
+
+Create a secret containing all the Github Org/App info as key/value map
+
+``` sh
+#source all the env vars collected above
+source ./env.sh
+#delete the existing one
+oc delete secret rhdh-secret --ignore-not-found=true -n rhdh
+#create a new one
+oc create secret generic rhdh-secret -n rhdh \
+--from-literal=GITHUB_ORG_URL=$GITHUB_ORG_URL \
+--from-literal=GITHUB_APP_APP_ID=$GITHUB_APP_APP_ID \
+--from-literal=GITHUB_APP_CLIENT_ID=$GITHUB_APP_CLIENT_ID \
+--from-literal=GITHUB_APP_CLIENT_SECRET=$GITHUB_APP_CLIENT_SECRET \
+--from-literal=GITHUB_APP_PRIVATE_KEY=$GITHUB_APP_PRIVATE_KEY \
+--from-literal=GITHUB_APP_WEBHOOK_URL=$GITHUB_APP_WEBHOOK_URL \
+--from-literal=GITHUB_APP_WEBHOOK_SECRET=$GITHUB_APP_WEBHOOK_SECRET \
+--from-literal=GITHUB_ENABLED=true
+```
+
+Your secret should look like this.
+
+```yaml
+kind: Secret
+apiVersion: v1
+metadata:
+  name: rhdh-secret
+  namespace: rhdh
+data:
+  GITHUB_APP_APP_ID: 
+  GITHUB_APP_CLIENT_ID: 
+  GITHUB_APP_CLIENT_SECRET: 
+  GITHUB_APP_PRIVATE_KEY: 
+  GITHUB_APP_WEBHOOK_URL: 
+  GITHUB_APP_WEBHOOK_SECRET: 
+  GITHUB_ENABLED: 
+  GITHUB_ORG_URL: 
+type: Opaque
+```
+### Additional RHDH Config Map
+This ConfigMap inject adtional config to the DevHub instance.
+
+ * create Config Map a named `app-config-rhdh` with the following content.
+  
+```yaml
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: app-config-rhdh
+  namespace: rhdh
+immutable: false
+data:
+  app-config-rhdh.yaml: |
+    app:
+      title : Red Hat Developer Hub    
+    integrations:
+      github:
+        - host: github.com
+          apps:
+            - appId: ${GITHUB_APP_APP_ID} 
+              clientId: ${GITHUB_APP_CLIENT_ID} 
+              clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+              webhookUrl: ${GITHUB_APP_WEBHOOK_URL}
+              webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
+              privateKey: |
+                ${GITHUB_APP_PRIVATE_KEY}
+                
+    auth:
+      environment: development
+      providers:
+        github:
+          development:
+            clientId: ${GITHUB_RHDH_APP_CLIENT_ID}
+            clientSecret: ${GITHUB_RHDH_APP_CLIENT_SECRET}
+
+    catalog:
+      providers:
+        githubOrg:
+          default:
+            id: development
+            orgUrl: ${GITHUB_ORG_URL}        
+
+    enabled:
+      github: ${GITHUB_ENABLED} 
+      githubOrg: true   
+```
+
+### Upgrade the Dev Hub Helm Char Values
+Upgrade the Dev Hub instance passing additional values in order to load our additional ConfigMap.
+
+```yaml
+global:
+  clusterRouterBase: apps.YOUR_CLUSTER_DOMAIN # UPDATE THSI WITH YOUR CUSTER DOMAIN!
+route:
+  enabled: true
+  host: '{{ .Values.global.host }}'
+  path: /
+  tls:
+    enabled: true
+    insecureEdgeTerminationPolicy: Redirect
+    termination: edge
+  wildcardPolicy: None
+upstream:
+  backstage:
+    appConfig:
+      app:
+        baseUrl: 'https://{{- include "janus-idp.hostname" . }}'
+      backend:
+        baseUrl: 'https://{{- include "janus-idp.hostname" . }}'
+        cors:
+          origin: 'https://{{- include "janus-idp.hostname" . }}'
+        database:
+          connection:
+            password: '${POSTGRESQL_ADMIN_PASSWORD}'
+            user: postgres
+    args:
+      - '--config '
+      - app-config.yaml
+      - '--config'
+      - app-config.example.yaml
+      - '--config'
+      - app-config.example.production.yaml
+    command:
+      - node
+      - packages/backend
+    containerPorts:
+      backend: 7007
+    extraAppConfig:
+      - configMapRef: app-config-rhdh # DOUBLE CHECK THIS CM NAME!!!
+        filename: app-config-rhdh.yaml
+    extraEnvVars:
+      - name: POSTGRESQL_ADMIN_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            key: postgres-password
+            name: '{{ .Release.Name }}-postgresql'
+      - name: NODE_TLS_REJECT_UNAUTHORIZED
+        value: '0'     
+    extraEnvVarsSecrets:
+      - rhdh-secret # DOUBLE CHECK THIS SECRET NAME!!!
+      #- logo-secret
+    image:
+      debug: true
+      pullPolicy: Always
+      pullSecrets:
+        - rhdh-pull-secret
+      registry: quay.io
+      repository: rhdh/rhdh-hub-rhel9
+      tag: 1.0-88
+    installDir: /app
+    replicas: 1
+    revisionHistoryLimit: 10
+  clusterDomain: cluster.local
+  diagnosticMode:
+    args:
+      - infinity
+    command:
+      - sleep
+    enabled: false
+  ingress:
+    enabled: false
+    host: '{{ .Values.global.host }}'
+    tls:
+      enabled: false
+  metrics:
+    serviceMonitor:
+      enabled: false
+      path: /metrics
+  nameOverride: developer-hub
+  networkPolicy:
+    enabled: false
+  postgresql:
+    auth:
+      secretKeys:
+        adminPasswordKey: postgres-password
+        userPasswordKey: password
+    enabled: true
+    image:
+      registry: registry.redhat.io
+      repository: rhel9/postgresql-15
+      tag: latest
+    postgresqlDataDir: /var/lib/pgsql/data/userdata
+    primary:
+      containerSecurityContext:
+        enabled: false
+      extraEnvVars:
+        - name: POSTGRESQL_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: postgres-password
+              name: '{{ .Release.Name }}-postgresql'
+      persistence:
+        enabled: true
+        mountPath: /var/lib/pgsql/data
+        size: 1Gi
+      podSecurityContext:
+        enabled: false
+      securityContext:
+        enabled: false
+  service:
+    externalTrafficPolicy: Cluster
+    ports:
+      backend: 7007
+      name: http-backend
+      targetPort: backend
+    sessionAffinity: None
+    type: ClusterIP
+  serviceAccount:
+    automountServiceAccountToken: true
+    create: false
+```
+
+Now wait for the RHDH POD to be restarted and test it.
 
 ## Onboarding a Sample Application Entity
 
 ## Creating a sample Golden Path Template
+
+---
+
+# Setup Openshift DevSpaces to use Github as iDP (using OIDC)
+All you have to do is create a secret properly annotade and the DevSpaces Operator takes care of the configuration.
+
+``` sh
+export DEV_SPACES_NAMESPACE='openshift-devspaces'
+
+oc delete secret github-oauth-config --ignore-not-found=true -n openshift-devspaces
+oc create secret generic github-oauth-config -n openshift-devspaces \
+--from-literal=id=$GITHUB_DEV_SPACES_CLIENT_ID \
+--from-literal=secret=$GITHUB_DEV_SPACES_CLIENT_SECRET
+
+oc label secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
+--overwrite=true app.kubernetes.io/part-of=che.eclipse.org app.kubernetes.io/component=oauth-scm-configuration
+
+oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
+--overwrite=true che.eclipse.org/oauth-scm-server=github
+```
+
+
+---
+
+# Install Red Hat Quay Container Registry (if not yet installed)
+
