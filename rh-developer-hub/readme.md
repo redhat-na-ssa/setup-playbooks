@@ -86,7 +86,7 @@ export GITHUB_ORG_URL=https://github.com/$GITHUB_ORGANIZATION
 1. Create a new GitHub Application to use the `Git WebHooks` functionality in this demo.  The required field will be populated, and correct permissions set.
 
     ``` sh
-    open "https://github.com/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-webhook&url=https://janus-idp.io/blog&webhook_active=true&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
+    open "https://github.com/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-rhdh-app&url=https://janus-idp.io/blog&webhook_active=true&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
     ```
 
  * Remember to fill out the following fields:
@@ -108,7 +108,7 @@ export GITHUB_ORG_URL=https://github.com/$GITHUB_ORGANIZATION
 
     ![Install App](assets/org-install-app.png)
 
-## Create Github **OAuth** Applications
+## Create Github **OAuth** Applications :x: `Skip this step for now. We'll do this in later phases.`
 
 In this section we'll create and setup **two different** GitHub **OAuth** Applications that will be later integrated with DevSpaces and RHSSO (Keycloak).
 
@@ -173,7 +173,15 @@ pull the Red Hat Developer Hub container image.
 
 ### Install using the Red Hat Developer Hub Helm Chat from the Openshift Helm Chart marketplace
 ## Initial configuration
-Use the Developer Hub Helm Chart to create an instance and wait for the Postgres and DevHub PODs to come up to a healthy state.
+ * Create a new Project Namespaces named `rhdh`. We'll be deploying Dev Hub in this namespace.
+
+ * Use the Developer Hub Helm Chart to create an instance and wait for the Postgres and DevHub PODs to come up to a healthy state.
+
+  > :exclamation: During the intial setup its recommended to set the Dev Hub logging to DEBUG mode. To do that simply run the following command:
+
+  ``` sh
+  oc set env deployment developer-hub LOG_LEVEL=debug -n rhdh
+  ```
 
 ### Main Config Secret
 
@@ -391,7 +399,7 @@ Now wait for the RHDH POD to be restarted and test it.
 
 ### Import Sample GPTs
  1. Fork this repo into your GitHub org: https://github.com/redhat-na-ssa/software-templates
- 2. Add a new location entry in the apr-config-rhdh Config Map.
+ 2. Add a new location entry in the `apr-config-rhdh` Config Map.
 
 ```yaml
       locations:
@@ -415,6 +423,7 @@ Now wait for the RHDH POD to be restarted and test it.
 
  1. create a new SA
  > using the CLI
+
 ``` sh
 oc create sa rhdh-k8s-plugin -n rhdh
 ```
@@ -428,8 +437,8 @@ metadata:
 ```
 
  2. Create a Secret Token and bind it to the ServiceAccount
+ > using the CLI
 
-using the CLI
 ``` sh
 oc create token rhdh-k8s-plugin -n rhdh
 ```
@@ -562,11 +571,13 @@ data:
 type: Opaque
 ``` 
 
- 6. Update the app-config-rhdh Config Map by ading this section (at the same level and `auth:`)
+ 6. Enable the Kubernetes Plugin in the DevHub Config Map
+   * Update the app-config-rhdh Config Map by ading this section (at the same level and `auth:`)
+  
 ```yaml
 data:
   app-config-rhdh.yaml: |
-  #...
+
     kubernetes:
       clusterLocatorMethods:
         - clusters:
@@ -585,9 +596,14 @@ data:
           plural: taskruns
       serviceLocatorMethod:
           type: multiTenant
+
+    enabled:
+      github: ${GITHUB_ENABLED} 
+      githubOrg: true
+      kubernetes: true #<--- Here!
 ```
 
- 1. Upgrade the DevHub Helm values by adding the secret name `backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
+ 7. Upgrade the DevHub Helm values by adding the secret name `backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
 
 ```yaml
     extraEnvVarsSecrets:
