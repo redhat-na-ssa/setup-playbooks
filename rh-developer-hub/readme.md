@@ -387,6 +387,185 @@ upstream:
 
 Now wait for the RHDH POD to be restarted and test it.
 
+
+### Import Sample GPTs
+ 1. Add a new location entry in the apr-config-rhdh Config Map.
+
+```yaml
+      locations:
+        - type: url
+          target: https://github.com/redhat-na-ssa/software-templates/blob/main/showcase-templates.yaml
+```
+ 2. Save the CM
+ 3. Restart the DevHub POD
+ 4. In the DevHub dashboad, got to Create (left menu) and see all the imported **sample** Golden Path Templates
+
+### Create a sample Catalog Item based on SpringBoot backend
+ 1. In the Golden Path Templates page, seach for SpringBoot
+ 2. Click on Choose and start filling out the Wizard prompts
+ 3. At the end hit Create
+ 4. Create -> select the App entity -> About card -> Hit refresh icon, Refresh the page
+ 5. Check all the new tab that shows in the screen
+ 6. Go back to the Catalog
+
+### Enabling Kubernetes Plugin
+
+ 1. create a new SA
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rhdh-k8s-plugin
+  namespace: rhdh
+```
+ 2. Create a Secret Token and bind it to the SA
+```yaml
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: rhdh-k8s-plugin-secret
+  namespace: rhdh
+  annotations:
+    kubernetes.io/service-account.name: rhdh-k8s-plugin
+```
+
+ 3. Create a ClusterRole
+```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1 
+metadata:
+  name: rhdh-k8s-plugin
+rules:
+  - verbs: 
+      - get
+      - watch
+      - list 
+    apiGroups:
+      - '' 
+    resources:
+      - pods
+      - pods/log
+      - services
+      - configmaps 
+      - limitranges
+  - verbs: 
+      - get
+      - watch
+      - list 
+    apiGroups:
+      - metrics.k8s.io 
+    resources:
+      - pods 
+  - verbs:
+      - get
+      - watch 
+      - list
+    apiGroups: 
+      - apps
+    resources:
+      - daemonsets
+      - deployments 
+      - replicasets 
+      - statefulsets
+  - verbs: 
+      - get
+      - watch
+      - list 
+    apiGroups:
+      - autoscaling 
+    resources:
+      - horizontalpodautoscalers 
+  - verbs:
+      - get
+      - watch 
+      - list
+    apiGroups:
+      - networking.k8s.io
+    resources: 
+      - ingresses
+  - verbs: 
+      - get
+      - watch 
+      - list
+    apiGroups: 
+      - batch
+    resources: 
+      - jobs
+      - cronjobs
+  - verbs: 
+      - get
+      - list 
+    apiGroups:
+      - tekton.dev 
+    resources:
+      - pipelineruns 
+      - taskruns
+```
+
+ 4. Create a ClusterRoleBinding
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: rhdh-k8s-plugin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: rhdh-k8s-plugin
+subjects:
+  - kind: ServiceAccount
+    name: rhdh-k8s-plugin
+    namespace: rhdh
+```
+
+ 5. Create a new secret with Cluster config
+```yaml
+kind: Secret
+apiVersion: v1
+metadata:
+  name: backstage-k8s-plugin-secret
+  namespace: rhdh
+data:
+  K8S_CLUSTER_NAME: # development-cluster
+  K8S_CLUSTER_TOKEN: # comes from the secret token create at step #2 (k8s-plugin-secret)
+  K8S_CLUSTER_URL: # copy your cluster api url (with the :6343)
+type: Opaque
+``` 
+
+ 6. Update the app-config-rhdh Config Map by ading this section (at the same level and `auth:`)
+```yaml
+data:
+  app-config-rhdh.yaml: |
+  #...
+    kubernetes:
+      clusterLocatorMethods:
+        - clusters:
+          - authProvider: serviceAccount
+            name: ${K8S_CLUSTER_NAME}
+            serviceAccountToken: ${K8S_CLUSTER_TOKEN}
+            url: ${K8S_CLUSTER_URL}
+            skipTLSVerify: true
+          type: config
+      customResources:
+        - apiVersion: v1beta1
+          group: tekton.dev
+          plural: pipelineruns
+        - apiVersion: v1beta1
+          group: tekton.dev
+          plural: taskruns
+      serviceLocatorMethod:
+          type: multiTenant
+```
+
+ 7. Upgrade the DevHub Helm values by adding the secret under `extraEnvVarsSecrets:`
+
+```yaml
+    extraEnvVarsSecrets:
+      - rhdh-secret
+      - backstage-k8s-plugin-secret # from step #5
+```
+
 ## Onboarding a Sample Application Entity
 
 ## Creating a sample Golden Path Template
