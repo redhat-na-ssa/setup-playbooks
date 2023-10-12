@@ -1,6 +1,7 @@
 # Red Hat Developer Hub (Early Access Program) Setup instructions
 
 > :exclamation: NOTE: *the following instructions outlined here are not intended for building a production-ready environment! It is intended to build a PoC leveraging Red Hat Openshift DevSecOps offerings.* 
+> This is a live document, so make sure you refresh this page to see the latest version!
 
 ## Openshift Cluster Checklist
 
@@ -47,25 +48,25 @@
 
 ---
 
-# Source Control System and Identity Provider setup
-> ❗This is the most important integration required by Developer Hub!
+> ❗❗❗ NOTE: we assume you have access to a Unix-based shell to execute the commands thought the next sections. 
+> If you don't have one and is using Windows you can use a Git shell (eg: https://gitforwindows.org/).
 
-## Openshift Cluster Info
+> We will be collectiong and creating a couple of environment variables, 
+> it may be preferable create a `./env.sh` file containing them and the later run `source ./env.sh` to make them available for the commands we'll be executing.
+
+---
+
+# Openshift Cluster Info
 
 Log in to your OpenShift cluster via the `oc` client.  Set the `OPENSHIFT_CLUSTER_INFO` variable for use later.
 
 ``` sh
-export OPENSHIFT_CLUSTER_INFO=$(oc cluster-info | head -n 1 | sed 's/^.*https...api//' | sed 's/.6443.*$//' )
+export OPENSHIFT_CLUSTER_INFO=$(oc cluster-info | head -n 1 | sed 's/^.*https...api//' | sed 's/.6443.*$//')
+export K8S_CLUSTER_API=$(oc cluster-info | head -n 1 |  sed 's/^.*https/https/')
 ```
 
->❗ tip "Using Linux?"
-  If you are using a `Linux` environment, set the alias for the following commands to work:
-
-  ```sh
-  alias open="xdg-open"
-  ```
-
-For the remaining environment variables, it may be preferable create a `./env.sh` containeing the listed env vars as you complete the setup configuration, then run `source ./env.sh`.
+# Source Control System and Identity Provider setup
+> ❗This is the most important integration required by Developer Hub!
 
 ## Create GitHub Organization (if not exist)
 
@@ -77,8 +78,10 @@ The `GITHUB_ORGANIZATION` environment variable will be set to the name of the or
   You may also use any organization you are a member of, as long as you have the ability to create new repositories within it.
 
 ``` sh
-export GITHUB_ORGANIZATION=
-export GITHUB_ORG_URL=https://github.com/$GITHUB_ORGANIZATION
+# if using a hosted Enterprise GitHub replace github.com by your internal domain.
+export GITHUB_HOST_DOMAIN=github.com
+export GITHUB_ORGANIZATION='Your Github Org Name Here'
+export GITHUB_ORG_URL=https://$GITHUB_HOST_DOMAIN/$GITHUB_ORGANIZATION
 ```
 
 ## Set Up GitHub Application
@@ -86,62 +89,51 @@ export GITHUB_ORG_URL=https://github.com/$GITHUB_ORGANIZATION
 1. Create a new GitHub Application to use the `Git WebHooks` functionality in this demo.  The required field will be populated, and correct permissions set.
 
     ``` sh
-    open "https://github.com/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-rhdh-app&url=https://janus-idp.io/blog&webhook_active=true&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
+    open "https://$GITHUB_HOST_DOMAIN/organizations/$GITHUB_ORGANIZATION/settings/apps/new?name=$GITHUB_ORGANIZATION-rhdh-app&url=https://janus-idp.io/blog&webhook_active=true&public=false&administration=write&checks=write&actions=write&contents=write&statuses=write&vulnerability_alerts=write&dependabot_secrets=write&deployments=write&discussions=write&environments=write&issues=write&packages=write&pages=write&pull_requests=write&repository_hooks=write&repository_projects=write&secret_scanning_alerts=write&secrets=write&security_events=write&workflows=write&webhooks=write"
     ```
 
+ > you can also use `echo` instead od `open` to print out the URL, then copy&paste into your web browser address bar.
+
  * Remember to fill out the following fields:
-  * Callback URL: `https://developer-hub-rhdh.apps.your-cluster-domain/api/auth/github/handler/frame`
-  * Webhook URL: `https://developer-hub-rhdh.apps.your-cluster-domain/`
-  * Webhook Secret: `a radom string` (save it to use later in the DevHub config!)
+   * Callback URL: `https://developer-hub-rhdh.apps.your-cluster-domain/api/auth/github/handler/frame`
+   * Webhook URL: `https://developer-hub-rhdh.apps.your-cluster-domain/`
+   * Webhook Secret: `a radom string` (save it to use later in the DevHub config!)
 
 2. Set the `GITHUB_APP_ID` and `GITHUB_APP_CLIENT_ID` environment variables to the App ID  and App Client ID, respectively. Generate a new client secret and set the `GITHUB_APP_CLIENT_SECRET` environment variable.  Then, generate a `Private Key` for this app and **download** the private key file.
     ``` sh
     export GITHUB_APP_ID=
     export GITHUB_APP_CLIENT_ID=
     export GITHUB_APP_CLIENT_SECRET=
-    export GITHUB_APP_PRIVATE_KEY=$(cat /path/to/github-app-key.pem)
+    export GITHUB_APP_PRIVATE_KEY="$(< /path/to/github-app-key.pem)"
     ```
 
     ![Organization Client Info](assets/org-client-info.png)
 
-3. Go to the `Install App` table on the left side of the page and install the GitHub App that you created for your organization.
+3. Go to the `Install App` table on the left side of the page and install the GitHub App that you created for your organization. Choose to install it to All Repositories under this Organization.
 
     ![Install App](assets/org-install-app.png)
 
-## Create Github **OAuth** Applications :x: `Skip this step for now. We'll do this in later phases.`
-
-In this section we'll create and setup **two different** GitHub **OAuth** Applications that will be later integrated with DevSpaces and RHSSO (Keycloak).
-
-### RHSSO Access Manager
-Create an GitHub OAuth application in order to use GitHub as an Identity Provider for Red Hat Developer Hub.
+4. source your `env.sh` file
+At this point your `env.sh` should looke like this
 
 ``` sh
-open "https://github.com/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-identity-provider&oauth_application[url]=https://rhdh.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://keycloak-rhdh.apps$OPENSHIFT_CLUSTER_INFO/auth/realms/rhdh/broker/github/endpoint"
+export OPENSHIFT_CLUSTER_INFO=$(oc cluster-info | head -n 1 | sed 's/^.*https...api//' | sed 's/.6443.*$//')
+export K8S_CLUSTER_API=$(oc cluster-info | head -n 1 |  sed 's/^.*https/https/')
+
+export GITHUB_HOST_DOMAIN=github.com
+export GITHUB_ORGANIZATION='Your Github Org Name Here'
+export GITHUB_ORG_URL=https://$GITHUB_HOST_DOMAIN/$GITHUB_ORGANIZATION
+
+export GITHUB_APP_ID='123'
+export GITHUB_APP_CLIENT_ID='random string'
+export GITHUB_APP_CLIENT_SECRET='random string'
+export GITHUB_APP_PRIVATE_KEY="$(< github-app-key.pem)"
 ```
 
-Set the `GITHUB_KEYCLOAK_CLIENT_ID` and `GITHUB_KEYCLOAK_CLIENT_SECRET` environment variables with the values from the OAuth application.
-
+Source it before going to the next session
 ``` sh
-export GITHUB_KEYCLOAK_CLIENT_ID=
-export GITHUB_KEYCLOAK_CLIENT_SECRET=
+source env.sh
 ```
-
-![Get Client ID](assets/client-info.png)
-
-### DevSpaces
-Create a **second** GitHub OAuth application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
-
-``` sh
-open "https://github.com/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-dev-spaces&oauth_application[url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
-```
-
-Set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with the values from the OAuth application.
-
-``` sh
-export GITHUB_DEV_SPACES_CLIENT_ID=
-export GITHUB_DEV_SPACES_CLIENT_SECRET=
-```
-
 ---
 
 # Red Hat Developer Hub
@@ -241,7 +233,11 @@ data:
       title : Red Hat Developer Hub    
     integrations:
       github:
-        - host: github.com
+        - host: github.com # if using Hosted Enterprise GitHub, replace this by your domain URL
+          #----- 
+          # !!! if integrating with a Hosted GitHub Enterprise instance add the following next line !!!
+          #apiBaseUrl: https://your-github-enterprie-domain/api/v3
+          #----- 
           apps:
             - appId: ${GITHUB_APP_APP_ID} 
               clientId: ${GITHUB_APP_CLIENT_ID} 
@@ -256,8 +252,13 @@ data:
       providers:
         github:
           development:
-            clientId: ${GITHUB_RHDH_APP_CLIENT_ID}
-            clientSecret: ${GITHUB_RHDH_APP_CLIENT_SECRET}
+            #----- 
+            # !!! if integrating with a Hosted GitHub Enterprise instance add the following next line !!!
+            #enterpriseInstanceUrl: https://your-github-enterprie-domain
+            #----- 
+            clientId: ${GITHUB_APP_CLIENT_ID}
+            clientSecret: ${GITHUB_APP_CLIENT_SECRET}
+          
 
     catalog:
       providers:
@@ -554,7 +555,7 @@ subjects:
 oc create secret generic backstage-k8s-plugin-secret -n rhdh \
 --from-literal=K8S_CLUSTER_NAME='development-cluster' \
 --from-literal=K8S_CLUSTER_TOKEN='<ServiceAccount token from step 2>' \
---from-literal=K8S_CLUSTER_URL=$(oc cluster-info | head -n 1 |  sed 's/^.*https/https/')
+--from-literal=K8S_CLUSTER_URL=$K8S_CLUSTER_API
 
 ```
 
@@ -564,7 +565,7 @@ apiVersion: v1
 metadata:
   name: backstage-k8s-plugin-secret
   namespace: rhdh
-data:
+stringData:
   K8S_CLUSTER_NAME: 'development-cluster'
   K8S_CLUSTER_TOKEN: 'comes from the secret token create at step #2 (k8s-plugin-secret)'
   K8S_CLUSTER_URL: 'copy your cluster api url (with the :6343)'
@@ -610,15 +611,33 @@ data:
       - rhdh-secret
       - backstage-k8s-plugin-secret # from step #5
 ```
+---
 
 ## Onboarding a Sample Application Entity
+
+---
 
 ## Creating a sample Golden Path Template
 
 ---
 
 # Setup Openshift DevSpaces to use Github as iDP (using OIDC)
-All you have to do is create a secret properly annotade and the DevSpaces Operator takes care of the configuration.
+
+### DevSpaces
+Create a GitHub **OAuth** application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
+
+``` sh
+open "https://$GITHUB_HOST_DOMAIN/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-devspaces&oauth_application[url]=https://devspaces.apps.$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps.$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
+```
+
+Set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with the values from the OAuth application.
+
+``` sh
+export GITHUB_DEV_SPACES_CLIENT_ID=
+export GITHUB_DEV_SPACES_CLIENT_SECRET=
+```
+
+Now, all you have to do is create a secret properly annotade and the DevSpaces Operator takes care of the configuration.
 
 ``` sh
 export DEV_SPACES_NAMESPACE='openshift-devspaces'
