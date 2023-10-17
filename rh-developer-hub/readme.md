@@ -32,6 +32,7 @@
  * Openshift Advanced Cluster Management (ACM) `required for clusters/topology view`
  * Openshift Advanced Cluster Security (ACS) `required for image security/vulnerability scanning`
  * Red Hat SSO (Keycloak) `required as an iDP broker using OIDC standard`
+ * Openshift Quay `required for image registry`
 
    > All of the components listed above are installed using Operators available in the Openshift Operator Hub
 
@@ -63,6 +64,72 @@ Log in to your OpenShift cluster via the `oc` client.  Set the `OPENSHIFT_CLUSTE
 ``` sh
 export OPENSHIFT_CLUSTER_INFO=$(oc cluster-info | head -n 1 | sed 's/^.*https...api//' | sed 's/.6443.*$//')
 export K8S_CLUSTER_API=$(oc cluster-info | head -n 1 |  sed 's/^.*https/https/')
+```
+
+# Quay Installation
+> ❗Preqrequesties : S3 bucket or ODF
+1. Install the quay operator
+2. Create the configmap file called configmap.yaml and copy the contents below
+
+```yaml
+REGISTRY_TITLE: Red Hat Product Demo System Quay
+SERVER_HOSTNAME: quay-registry.<<Cluster URL>> #e.g quay-registry.apps.cluster-dnqwv.dnqwv.sandbox2019.opentlc.com
+EXTERNAL_TLS_TERMINATION: true
+SUPER_USERS:
+- quayadmin
+FEATURE_USER_INITIALIZE: true
+BROWSER_API_CALLS_XHR_ONLY: false
+DISTRIBUTED_STORAGE_CONFIG:
+  s3Storage:
+    - S3Storage
+    - host: s3.amazonaws.com
+      s3_access_key: <<AWS ACCESS KEY>>
+      s3_secret_key: <<AWS SECRET KEY>>
+      s3_bucket: <<AWS Bucket Name>>
+      storage_path: /datastorage/registry
+DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS: []
+DISTRIBUTED_STORAGE_PREFERENCE:
+    - s3Storage
+```
+3. Create the project namespaces
+```sh
+  oc project quay
+  oc create secret generic config-bundle-secret --from-file config.yaml=./config.yaml
+```
+4. Create the quay registry CR in the quay namespace
+
+```yaml
+apiVersion: quay.redhat.com/v1
+kind: QuayRegistry
+metadata:
+  name: rhdh-quay-registry
+  namespace: quay
+spec:
+  components:
+    - kind: clair
+      managed: true
+    - kind: postgres
+      managed: true
+    - kind: objectstorage
+      managed: false
+    - kind: redis
+      managed: true
+    - kind: horizontalpodautoscaler
+      managed: true
+    - kind: route
+      managed: true
+    - kind: mirror
+      managed: false
+    - kind: monitoring
+      managed: true
+    - kind: tls
+      managed: true
+    - kind: quay
+      managed: true
+    - kind: clairpostgres
+      managed: true
+  configBundleSecret: config-bundle-secret
+
 ```
 
 # Source Control System and Identity Provider setup
