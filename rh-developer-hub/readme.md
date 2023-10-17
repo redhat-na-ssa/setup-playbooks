@@ -67,7 +67,7 @@ export K8S_CLUSTER_API=$(oc cluster-info | head -n 1 |  sed 's/^.*https/https/')
 ```
 
 # Quay Installation
-> ❗Preqrequesties : S3 bucket or ODF
+> ❗Prerequisites : S3 bucket or ODF
 1. Install the quay operator
 2. Create the configmap file called configmap.yaml and copy the contents below
 
@@ -129,8 +129,11 @@ spec:
     - kind: clairpostgres
       managed: true
   configBundleSecret: config-bundle-secret
-
 ```
+
+5. Once quay is up open the quay regsitry url via route created.
+6. Create an org name `rhdh-demo`
+7. Create an application and generate bearer token.
 
 # Source Control System and Identity Provider setup
 > ❗This is the most important integration required by Developer Hub!
