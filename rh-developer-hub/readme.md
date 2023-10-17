@@ -528,11 +528,26 @@ rules:
     apiGroups:
       - tekton.dev 
     resources:
+      - pipelines #<---
       - pipelineruns 
       - taskruns
+  - verbs: #<---
+      - get
+      - list
+    apiGroups:
+      - route.openshift.io
+    resources:
+      - routes
+  - verbs:
+      - get
+      - list
+    apiGroups:
+      - org.eclipse.che
+    resources:
+      - checlusters
 ```
 
- 4. Create a ClusterRoleBinding for the ServiceAccount
+ 1. Create a ClusterRoleBinding for the ServiceAccount
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -548,7 +563,7 @@ subjects:
     namespace: rhdh
 ```
 
- 5. Create a new Secret with the Cluster info
+ 1. Create a new Secret with the Cluster info
  > using the CLI
 
 ``` sh
@@ -589,12 +604,25 @@ data:
             skipTLSVerify: true
           type: config
       customResources:
-        - apiVersion: v1beta1
-          group: tekton.dev
-          plural: pipelineruns
-        - apiVersion: v1beta1
-          group: tekton.dev
-          plural: taskruns
+        # to view the Tekton PipelineRuns list in the side panel 
+        # and to view the latest PipelineRun status in the Topology node decorator:
+        - group: 'tekton.dev'  #<---
+          apiVersion: 'v1beta1'
+          plural: 'pipelines'
+        - group: 'tekton.dev'
+          apiVersion: 'v1beta1'
+          plural: 'pipelineruns'
+        - group: 'tekton.dev'
+          apiVersion: 'v1beta1'
+          plural: 'taskruns'
+        # to view the edit code decorator:
+        - group: 'org.eclipse.che'
+          apiVersion: 'v2'
+          plural: 'checlusters'
+        # to view the OpenShift route
+        - group: 'route.openshift.io'
+          apiVersion: 'v1'
+          plural: 'routes'
       serviceLocatorMethod:
           type: multiTenant
 
@@ -611,6 +639,12 @@ data:
       - rhdh-secret
       - backstage-k8s-plugin-secret # from step #5
 ```
+
+### Enabling Quay Container Registry Plugin
+
+ * Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay/README.md
+ * 
+
 ---
 
 ## Onboarding a Sample Application Entity
@@ -619,9 +653,13 @@ data:
 
 ## Creating a sample Golden Path Template
 
+> Developer Hub (based on janus-idp) Plugins and Custom Actions repository: https://github.com/janus-idp/backstage-plugins
+
+ * Create a new container image repo on Quay Container Registry: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay-actions/examples/templates/01-quay-template.yaml
+
 ---
 
-# Setup Openshift DevSpaces to use Github as iDP (using OIDC)
+# Integrate Openshift DevSpaces and Github (for access tokens)
 
 ### DevSpaces
 Create a GitHub **OAuth** application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
