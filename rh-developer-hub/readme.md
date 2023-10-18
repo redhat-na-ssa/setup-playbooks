@@ -997,7 +997,7 @@ type: Opaque
   ```yaml
       extraEnvVarsSecrets:
         - rhdh-secret
-        - backstage-k8s-plugin-secret # from step #5
+        - backstage-k8s-plugin-secret
         - acm-backstage-k8s-plugin-secret # from step #5
   ```
 
