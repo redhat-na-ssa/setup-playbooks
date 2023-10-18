@@ -492,6 +492,9 @@ Now wait for the RHDH POD to be restarted and test it.
 
 ### Enabling Kubernetes Plugin
 
+> We assume all the components there is being integrated with Developer Hub is installed in the same cluster hosting RHDH instance. If some of the compoenents (eg. ArgoCD, ACM, ACS, etc) is running on a different cluster,
+> you may need to repeat this step on other clusters.
+
  1. create a new SA
  > using the CLI
 
@@ -513,9 +516,9 @@ metadata:
 ``` sh
 oc create token rhdh-k8s-plugin -n rhdh
 ```
-
 > Copy the token from the output and save it for later!
 
+> using the Openshift Administrator Console `Import YAML` (click the `+` icon located at the far top-right menu)
 ```yaml
 apiVersion: v1
 kind: Secret
@@ -598,10 +601,10 @@ rules:
     apiGroups:
       - tekton.dev 
     resources:
-      - pipelines #<---
+      - pipelines
       - pipelineruns 
       - taskruns
-  - verbs: #<---
+  - verbs:
       - get
       - list
     apiGroups:
@@ -710,6 +713,14 @@ data:
       - backstage-k8s-plugin-secret # from step #5
 ```
 
+### Enabling Openshift GitOps (ArgoCD) Plugin
+ * Plugin Docs: https://access.redhat.com/documentation/en-us/red_hat_plug-ins_for_backstage/2.0
+
+### Enabling OCM Plugin
+
+ * Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/ocm/README.md
+ * 
+
 ### Enabling Quay Container Registry Plugin
 
  * Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay/README.md
@@ -729,25 +740,90 @@ data:
 
 ---
 
-# Integrate Openshift DevSpaces and Github (for access tokens)
+# Openshift DevSpaces 
+> DevSpaces documentation: https://access.redhat.com/documentation/en-us/red_hat_openshift_dev_spaces/3.8
 
-### DevSpaces
+ 1. from the Openshift Operator Hub install
+    * Openshift DevSpaces
+    * Kubernetes Image Puller 
+ 2. Create new Namepsace (not project) named `openshift-devspaces`
+``` yaml
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: openshift-devspaces
+  labels:
+    kubernetes.io/metadata.name: openshift-devspaces
+spec:
+  finalizers:
+    - kubernetes
+```
+
+ 3. Create a new **Red Hat OpenShift Dev Spaces instance Specification** resource definition (`CheCluster`)
+``` yaml
+apiVersion: org.eclipse.che/v2
+kind: CheCluster
+metadata:
+  name: devspaces
+  namespace: openshift-devspaces
+spec:
+  components:
+    cheServer:
+      debug: false
+      logLevel: INFO
+    dashboard: {}
+    devWorkspace:
+      runningLimit: '5'
+    devfileRegistry: {}
+    imagePuller:
+      enable: true
+      spec: {}
+    metrics:
+      enable: true
+    pluginRegistry:
+      openVSXURL: 'https://open-vsx.org'
+  containerRegistry: {}
+  devEnvironments:
+    startTimeoutSeconds: 600
+    secondsOfRunBeforeIdling: -1
+    maxNumberOfWorkspacesPerUser: 5
+    containerBuildConfiguration:
+      openShiftSecurityContextConstraint: container-build
+    defaultEditor: che-incubator/che-code/insiders
+    maxNumberOfRunningWorkspacesPerUser: 5
+    defaultNamespace:
+      autoProvision: true
+      template: <username>-devspaces
+    secondsOfInactivityBeforeIdling: -1
+    storage:
+      # perWorkspaceStrategyPvcConfig:
+      #   claimSize: 10Gi
+      #   storageClass: gp3-csi
+      pvcStrategy: per-workspace
+  gitServices: {}
+  networking:
+    auth:
+      gateway:
+        configLabels:
+          app: che
+          component: che-gateway-config
+
+```
+
+### Integrate Openshift DevSpaces and Github (for access tokens)
+
 Create a GitHub **OAuth** application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
 
 ``` sh
 open "https://$GITHUB_HOST_DOMAIN/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-devspaces&oauth_application[url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
 ```
 
-Set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with the values from the OAuth application.
+Copy the App Id and the Secret Id and set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with its values. Then copy&paste the script content into a file, make it executable (`chmod +x `) and execute it (make sure you are logged in the riwght cluster!).
 
 ``` sh
+!#/bin/sh
 export GITHUB_DEV_SPACES_CLIENT_ID=
 export GITHUB_DEV_SPACES_CLIENT_SECRET=
-```
-
-Now, all you have to do is create a secret properly annotade and the DevSpaces Operator takes care of the configuration.
-
-``` sh
 export DEV_SPACES_NAMESPACE='openshift-devspaces'
 
 oc delete secret github-oauth-config --ignore-not-found=true -n openshift-devspaces
@@ -759,9 +835,29 @@ oc label secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
 --overwrite=true app.kubernetes.io/part-of=che.eclipse.org app.kubernetes.io/component=oauth-scm-configuration
 
 oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
---overwrite=true che.eclipse.org/oauth-scm-server=github
+--overwrite=true che.eclipse.org/oauth-scm-server=github 
+
+# if using Github Enterprise, also add these two additional annotations
+#oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
+#--overwrite=true che.eclipse.org/scm-server-endpoint=github_enterprise_server_url che.eclipse.org/scm-github-disable-subdomain-isolation="false"
 ```
 
+ * On your Github Project's repo, edit the `catalog-info.yaml` descriptor and add this `slug` (Backstage terminology)
+```yaml
+#...
+metadata:
+#...
+  annotations:
+    github.com/project-slug: organization/repo
+#...
+links:
+  - url: https://devspaces.apps.cluster-domain/#https://github.com/organization/app-repo-name
+    title: OpenShift Dev Spaces (VS Code)
+    icon: web
+
+```
+
+ 
 
 ---
 
