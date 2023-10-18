@@ -956,6 +956,19 @@ oc create secret generic backstage-k8s-plugin-secret -n rhdh \
 
 ```
 
+```yaml
+kind: Secret
+apiVersion: v1
+metadata:
+  name: acm-backstage-k8s-plugin-secret
+  namespace: rhdh
+stringData:
+  ACM_K8S_CLUSTER_NAME: 'hub-cluster'
+  ACM_K8S_CLUSTER_TOKEN: 'comes from the secret token create at step #2 (k8s-plugin-secret)'
+  ACM_K8S_CLUSTER_URL: 'copy your cluster api url (with the :6343)'
+type: Opaque
+```
+
 6. Update app-config-rhdh.yaml to include the plugin 
    > Note : The following changes needs to be installed on cluster where RHDH is installed.
    > Add the following under Catalog.providers section
@@ -979,7 +992,15 @@ oc create secret generic backstage-k8s-plugin-secret -n rhdh \
        enabled:
           ocm: true
   ```
-7.Update app-config-rhdh.yaml only when ACM is installed on same cluster as RHDH If not please ignore this step.
+  > Upgrade the DevHub Helm values by adding the secret name `acm-backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
+
+  ```yaml
+      extraEnvVarsSecrets:
+        - rhdh-secret
+        - acm-ackstage-k8s-plugin-secret # from step #5
+  ```
+
+7. Update app-config-rhdh.yaml only when ACM is installed on same cluster as RHDH If not please ignore this step.
   > Add the following under Catalog.providers section
   ```yaml
       ocm:
@@ -997,4 +1018,5 @@ oc create secret generic backstage-k8s-plugin-secret -n rhdh \
        enabled:
           ocm: true
   ```
+
 
