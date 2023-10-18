@@ -620,7 +620,7 @@ rules:
       - checlusters
 ```
 
- 1. Create a ClusterRoleBinding for the ServiceAccount
+ 4. Create a ClusterRoleBinding for the ServiceAccount
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -636,7 +636,7 @@ subjects:
     namespace: rhdh
 ```
 
- 1. Create a new Secret with the Cluster info
+ 5. Create a new Secret with the Cluster info
  > using the CLI
 
 ``` sh
@@ -848,7 +848,7 @@ oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
 metadata:
 #...
   annotations:
-    github.com/project-slug: organization/repo
+    github.com/project-slug: <<organization>>/<<repo>>
 #...
 links:
   - url: https://devspaces.apps.cluster-domain/#https://github.com/organization/app-repo-name
@@ -862,4 +862,133 @@ links:
 ---
 
 # Install Red Hat Quay Container Registry (if not yet installed)
+
+# Configuring OCM (Open Cluster Management) Plugin
+> ❗Prerequisites : ACM must be installed on the cluster
+
+If ACM is installed in a different cluster then we need to perform the following on HUB cluster. If installed 
+
+1. create a new SA
+ > using the CLI
+
+``` sh
+oc create sa acm-rhdh-k8s-plugin -n rhdh
+```
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: acm-rhdh-k8s-plugin
+  namespace: rhdh
+```
+
+ 2. Create a Secret Token and bind it to the ServiceAccount
+ > using the CLI
+
+``` sh
+oc create token acm-rhdh-k8s-plugin -n rhdh
+```
+> Copy the token from the output and save it for later!
+
+> using the Openshift Administrator Console `Import YAML` (click the `+` icon located at the far top-right menu)
+```yaml
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/service-account-token
+metadata:
+  name: acm-rhdh-k8s-plugin-secret
+  namespace: rhdh
+  annotations:
+    kubernetes.io/service-account.name: amc-rhdh-k8s-plugin
+```
+
+ 3. Create a ClusterRole
+ > use the Openshift Administrator Console `Import YAML` (click the `+` icon located at the far top-right menu)
+
+ ```yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: acm-rhdh-k8s-plugin
+rules:
+  - apiGroups:
+      - cluster.open-cluster-management.io
+    resources:
+      - managedclusters
+    verbs:
+      - get
+      - watch
+      - list
+  - apiGroups:
+      - internal.open-cluster-management.io
+    resources:
+      - managedclusterinfos
+    verbs:
+      - get
+      - watch
+      - list
+ ```
+
+4. Create a ClusterRoleBinding for the ServiceAccount
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: acm-rhdh-k8s-plugin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: acm-rhdh-k8s-plugin
+subjects:
+  - kind: ServiceAccount
+    name: acm-rhdh-k8s-plugin
+    namespace: rhdh
+```
+5. Create a new Secret with the Cluster info for ACM
+ > using the CLI
+
+``` sh
+oc create secret generic backstage-k8s-plugin-secret -n rhdh \
+--from-literal=ACM_K8S_CLUSTER_NAME='<ACM_HUB_ClusterName>>' \
+--from-literal=ACM_K8S_CLUSTER_TOKEN='<ServiceAccount token from step 2>' \
+--from-literal=ACM_K8S_CLUSTER_URL='<<HUB API URL for Openshift>>'
+
+```
+
+6. Update app-config-rhdh.yaml to include the plugin 
+   > Note : The following changes needs to be installed on cluster where RHDH is installed.
+   > Add the following under Catalog.providers section
+
+   ```yaml
+   ocm:
+     env: 
+        name: ${ACM_K8S_CLUSTER_NAME} 
+        url: ${ACM_K8S_CLUSTER_URL}
+        serviceAccountToken: ${ACM_K8S_CLUSTER_TOKEN}
+        schedule: # optional;proper same options as in TaskScheduleDefinition
+              # supports cron, ISO duration, "human duration" as used in code
+              frequency: { seconds: 10 }
+              # supports ISO duration, "human duration" as used in code
+              timeout: { seconds: 60 }  
+   ```
+
+  > Under enabled section of yaml please add the following.
+
+  ```yaml
+       enabled:
+          ocm: true
+  ```
+7.Update app-config-rhdh.yaml only when ACM is installed on same cluster as RHDH If not please ignore this step.
+  > Add the following under Catalog.providers section
+  ```yaml
+      ocm:
+          env:
+            kubernetesPluginRef: ${K8S_CLUSTER_NAME}
+            schedule: # optional;proper same options as in TaskScheduleDefinition
+              # supports cron, ISO duration, "human duration" as used in code
+              frequency: { seconds: 10 }
+              # supports ISO duration, "human duration" as used in code
+              timeout: { seconds: 60 }    
+  ```
 
