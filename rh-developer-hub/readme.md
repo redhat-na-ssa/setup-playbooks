@@ -866,7 +866,7 @@ links:
 # Configuring OCM (Open Cluster Management) Plugin
 > ❗Prerequisites : ACM must be installed on the cluster
 
-### > ❗❗❗  Note: Even after installing OCM plugin it will take an hour to sync the OCM cluster details under clusters tab.
+#### Note: Even after installing OCM plugin it will take an hour to sync the OCM cluster details under clusters tab.
 
 If ACM is installed in a different cluster then we need to perform the following on HUB cluster. If installed in the same cluster then move directly to step 7.
 
