@@ -866,7 +866,7 @@ links:
 # Configuring OCM (Open Cluster Management) Plugin
 > ❗Prerequisites : ACM must be installed on the cluster
 
-If ACM is installed in a different cluster then we need to perform the following on HUB cluster. If installed 
+If ACM is installed in a different cluster then we need to perform the following on HUB cluster. If installed in the same cluster then move directly to step 7.
 
 1. create a new SA
  > using the CLI
@@ -990,5 +990,11 @@ oc create secret generic backstage-k8s-plugin-secret -n rhdh \
               frequency: { seconds: 10 }
               # supports ISO duration, "human duration" as used in code
               timeout: { seconds: 60 }    
+  ```
+  > Under enabled section of yaml please add the following.
+
+  ```yaml
+       enabled:
+          ocm: true
   ```
 
