@@ -997,7 +997,8 @@ type: Opaque
   ```yaml
       extraEnvVarsSecrets:
         - rhdh-secret
-        - acm-ackstage-k8s-plugin-secret # from step #5
+        - backstage-k8s-plugin-secret # from step #5
+        - acm-backstage-k8s-plugin-secret # from step #5
   ```
 
 7. Update app-config-rhdh.yaml only when ACM is installed on same cluster as RHDH If not please ignore this step.
