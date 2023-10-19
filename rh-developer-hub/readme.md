@@ -1123,7 +1123,7 @@ type: Opaque
             navigationIndicatorColor: '#f4eea9' 
    ```
 
-6. Upgrade the helm deployment by including this quay-secret under  extraEnvVarsSecrets
+6. Upgrade the helm deployment by including this logo-secret under  extraEnvVarsSecrets
 
     ```yaml
         extraEnvVarsSecrets:
