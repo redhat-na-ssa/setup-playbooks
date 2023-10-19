@@ -1060,3 +1060,13 @@ type: Opaque
 
 ```
 
+3. Upgrade the helm deployment by including this quay-secret under  extraEnvVarsSecrets
+
+```yaml
+     extraEnvVarsSecrets:
+        - rhdh-secret
+        - backstage-k8s-plugin-secret
+        - acm-backstage-k8s-plugin-secret
+        - quay-secret
+```
+
