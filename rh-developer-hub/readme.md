@@ -1081,3 +1081,55 @@ type: Opaque
 ```
 
 # Customizing Logo and Themes.
+> Note : Logo's can be added with from svg or image. We need a base64 version of the svg/image
+
+1. Get the logo as svg/image and save it as a file e.g logo.txt
+2. convert to base64
+  ```sh
+      cat logo.txt | base64 > logo_base64.txt
+  ```
+3. prefix the following content `data:image/png;base64,` or  `data:image/svg+xml;base64,` depending on image or svg to base64 file
+4. create a secret named logo-secret (key/value secret)
+   > Note: Create through console don't use the below yaml this is just for reference
+
+   ```yaml
+      kind: Secret
+      apiVersion: v1
+      metadata:
+        name: logo-secret
+        namespace: rhdh
+      stringData:
+        BASE64_EMBEDDED_FULL_LOGO: <<content of logo_base64.txt>>
+      type: Opaque
+   ``` 
+5. Add the following content on app-config-rhdh.yaml
+
+   ```yaml
+      app:
+        title : Red Hat Developer Hub
+        branding:
+          fullLogo: ${BASE64_EMBEDDED_FULL_LOGO}
+          iconLogo: ${BASE64_EMBEDDED_FULL_LOGO}
+        theme:
+          light:
+            primaryColor: '#38BE8B'
+            headerColor1: 'hsl(204 100% 71%)'
+            headerColor2: 'color(a98-rgb 1 0 0)'
+            navigationIndicatorColor: '#be0000'
+          dark:
+            primaryColor: '#ab75cf'
+            headerColor1: '#0000d0'
+            headerColor2: 'rgb(255 246 140)'
+            navigationIndicatorColor: '#f4eea9' 
+   ```
+
+6. Upgrade the helm deployment by including this quay-secret under  extraEnvVarsSecrets
+
+    ```yaml
+        extraEnvVarsSecrets:
+            - rhdh-secret
+            - backstage-k8s-plugin-secret
+            - acm-backstage-k8s-plugin-secret
+            - quay-secret
+            - logo-secret
+    ```    
