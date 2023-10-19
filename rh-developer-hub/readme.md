@@ -1133,3 +1133,5 @@ type: Opaque
             - quay-secret
             - logo-secret
     ```    
+
+# Customizing Homepage and TechRadar.    
