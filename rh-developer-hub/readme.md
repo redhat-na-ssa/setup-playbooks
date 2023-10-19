@@ -1141,11 +1141,11 @@ type: Opaque
      1. Create a new repo under the Org
      2. git clone https://github.com/redhat-na-ssa/backstage-customization-provider
      3. execute the following
-       ```sh
-          cd backstage-customization-provider
-          git remote add enterprise <<Newly created git url>>
-          git push -u enterprise main
-       ```
+        ```sh
+            cd backstage-customization-provider
+            git remote add enterprise <<Newly created git url>>
+            git push -u enterprise main
+        ```
 3. Update the data.json file under <<Project Root>>/data/home/ for home page url
 4. Update the data.json file under <<Project Root>>/data/tech-radar/ for home page url 
 5. Perform a s2i deployment to rhdh namespace
