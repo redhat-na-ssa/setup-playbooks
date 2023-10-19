@@ -1146,8 +1146,8 @@ type: Opaque
             git remote add enterprise <<Newly created git url>>
             git push -u enterprise main
         ```
-3. Update the data.json file under <<Project Root>>/data/home/ for home page url
-4. Update the data.json file under <<Project Root>>/data/tech-radar/ for home page url 
+3. Update the data.json file under `<<Project Root>>/data/home/` for home page customizations
+4. Update the data.json file under `<<Project Root>>/data/tech-radar/` for tech-radar page customization
 5. Perform a s2i deployment to rhdh namespace
 6. Edit the existing logo-secret for homepage/tech-radar customization
    > Note : Add the following keys to `logo-secret`
