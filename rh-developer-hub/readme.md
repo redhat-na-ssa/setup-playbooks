@@ -1021,3 +1021,42 @@ type: Opaque
   ```
 
 
+# Configuring Quay plugin.
+> ❗Prerequisites : Quay Registry is available and configured with organization and bearer token is available.
+
+1. Create a secret to store quay url and quay bearer token
+
+```sh
+   export QUAY_URL=<<Quay URL>>
+   export QUAY_BEARER_TOKEN=<<Quay bearer token>>
+
+   oc create secret generic quay-secret -n rhdh --from-literal QUAY_URL=${QUAY_URL} --from-literal QUAY_BEARER_TOKEN=${QUAY_BEARER_TOKEN}
+```
+
+2. Add the following to app-config-rhdh.yaml for configuring quay plugin
+   > Note : The quay and proxy should be aligned to auth or any plugin root level
+
+```yaml
+
+  quay:
+      uiUrl: ${QUAY_URL}
+
+  proxy:
+    endpoints:  
+     '/quay/api':
+          target: ${QUAY_URL}
+          headers:
+            X-Requested-With: 'XMLHttpRequest'
+            Authorization: "Bearer ${QUAY_BEARER_TOKEN}"
+          changeOrigin: true
+          # Change to "false" in case of using self hosted quay instance with a self-signed certificate
+          secure: false
+```
+
+  Also enable the plugin via the following
+```yaml
+    enabled:
+      quay: true
+
+```
+
