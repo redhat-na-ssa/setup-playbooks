@@ -1135,3 +1135,41 @@ type: Opaque
     ```    
 
 # Customizing Homepage and TechRadar.    
+
+1. Fork the git project in customers SCM. (https://github.com/redhat-na-ssa/backstage-customization-provider)
+2. If remote fork is not allowed in the customer env use the following workaround
+     1. Create a new repo under the Org
+     2. git clone https://github.com/redhat-na-ssa/backstage-customization-provider
+     3. execute the following
+       ```sh
+          cd backstage-customization-provider
+          git remote add enterprise <<Newly created git url>>
+          git push -u enterprise main
+       ```
+3. Update the data.json file under <<Project Root>>/data/home/ for home page url
+4. Update the data.json file under <<Project Root>>/data/tech-radar/ for home page url 
+5. Perform a s2i deployment to rhdh namespace
+6. Edit the existing logo-secret for homepage/tech-radar customization
+   > Note : Add the following keys to `logo-secret`
+     ```yaml
+           HOMEPAGE_DATA_URL: "http://<<servicename>>:8080"
+           TECHRADAR_DATA_URL: "http://<<servicename>>:8080/tech-radar"
+     ```
+7. Add the following proxy config in app-config-rhdh.yaml
+   ```yaml
+       proxy:
+        endpoints:  
+          # Other Proxies
+          # customize developer hub instance
+          '/developer-hub':
+            target: ${HOMEPAGE_DATA_URL}
+            changeOrigin: true
+            # Change to "false" in case of using self hosted cluster with a self-signed certificate
+            secure: false
+          '/developer-hub/tech-radar':
+            target: ${TECHRADAR_DATA_URL}
+            changeOrigin: true
+            # Change to "false" in case of using self hosted cluster with a self-signed certificate
+            secure: false 
+   ```
+8. Delete the RHDH pod to reload with this new configmap updates.
