@@ -858,8 +858,18 @@ spec:
 ```
 
 5. Once quay is up open the quay regsitry url via route created.
-6. Create an org name `rhdh-demo`
-7. Create an application and generate bearer token.
+6. Create an account with user/password.
+7. Create an org name `rhdh-demo`
+8. Create an application and generate bearer token.
+9. Testing Quay Registry
+  ```sh
+     podman pull docker.io/redis
+     podman login -u <<user>> <<quay-url>>   # <<user>>/<<password>> is from setup 6 and <<quay-url>> is from the installed quay route
+     podman tag docker.io/redis <<quay-url>>/<<orgname>>/redis
+     podman push <<quay-url>>/<<orgname>>/redis
+     aws configure
+     aws s3 ls <<bucket-name>> --recursive
+  ```
 
 # Configuring OCM (Open Cluster Management) Plugin
 > ❗Prerequisites : ACM must be installed on the cluster
@@ -1070,3 +1080,4 @@ type: Opaque
         - quay-secret
 ```
 
+# Customizing Logo and Themes.
