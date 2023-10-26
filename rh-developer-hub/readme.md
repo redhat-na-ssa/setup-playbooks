@@ -645,7 +645,22 @@ data:
 ```
 
 ### Enabling Openshift GitOps (ArgoCD) Plugin
- * Plugin Docs: https://access.redhat.com/documentation/en-us/red_hat_plug-ins_for_backstage/2.0
+ > Plugin Docs: https://access.redhat.com/documentation/en-us/red_hat_plug-ins_for_backstage/2.0
+ > If your ArgoCD is located on a different cluster, please follow these steps describe in this gist for registering an external cluster: https://gist.github.com/rafaeltuelho/94b391efb3e6fa92d936b4227dd29bd6
+
+ 1. add this snippet to your `app-config-rhdh` ConfigMap in the `rhdh` namespace.
+```yaml
+    # optional: this will link to your argoCD web UI for each argoCD application
+    argocd:
+      baseUrl: https://openshift-gitops-server-openshift-gitops.apps..yourclusterdomain
+      appLocatorMethods:
+        - type: 'config'
+          instances:
+            - name: openshift-gitops
+              url: https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain
+              username: 'admin' # <--- its your argocd admin, NOT THE OPENSHIFT ADMIN!!!
+              password: 'argo admin pwd' # your can get it from the openshift-gitops-cluster Secret inside the openshift-gitops namespace
+```
 
 ### Enabling OCM Plugin
 
@@ -1173,3 +1188,62 @@ type: Opaque
             secure: false 
    ```
 8. Delete the RHDH pod to reload with this new configmap updates.
+
+<hr>
+
+## CI/CD smoke test
+
+1. On your Github Organization create a new PAT
+  
+  * Go to https://github.com/settings/personal-access-tokens/
+  ```
+  Token name: rhdh
+  Resource owner: Select your Org from the list
+  Check All repositories
+  Repository Permissions:
+    Contents: Read & Write
+    Pull Requests: Read & Write
+    Webhooks: Read & Write
+  Copy the token:
+    github_pat_11AA---------------
+  ```
+
+2. On Quay Registry Organization
+  create a new repo for the app image (eg: rhdh-springboot-smoke-test)
+  now create a new Robot account and grant it with Write permission on the created repo
+  Copy the Robot account password and the .dockerconfigjson Kubernetes secret as well
+
+2. Clone these two git repos
+ * App src code: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test
+ * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
+
+3. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
+ * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
+ * edit `helm/build/templates/pipelines-git-pat-secret.yaml` and replace `username` and `password`
+ * edit `helm/build/templates/vault-quay-basic-secret.yaml` and replace `username` and `password`
+ * edit `helm/build/templates/vault-quay-config-secret.yaml` and replace `.dockerconfigjson` with the your Quay robot secret.
+ * make any other necessary change according to your environment
+ * save, commit and push
+
+4. Create the Argo Applications by executing:
+``` sh
+#make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
+oc apply -f argo/
+```
+
+5. Create a webhook to trigger Openshift Piplines automatically
+ * Go to https://github.com/<your org here>/rhdh-springboot-smoke-test/settings/hooks
+   * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.uour-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
+   * Content type: `application/json`
+   * Secret: enter any random string
+   * SSL verification: Disabled
+   * Which events would you like to trigger this webhook?
+     * Let me select individual events.
+     * mark `Branch or tag creation` and `Pushes` 
+   * Mark `Active`
+   * Create webhook
+
+6. Finally, open the rhdh-springboot-smoke-test on an IDE and 
+ * make ay change to the src code.
+ * save, commmit and push
+ * a new Pipeline Run should be triggered automatically 
