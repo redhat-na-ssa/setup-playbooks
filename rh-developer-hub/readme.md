@@ -646,6 +646,7 @@ data:
 
 ### Enabling Openshift GitOps (ArgoCD) Plugin
  > Plugin Docs: https://access.redhat.com/documentation/en-us/red_hat_plug-ins_for_backstage/2.0
+
  > If your ArgoCD is located on a different cluster, please follow these steps describe in this gist for registering an external cluster: https://gist.github.com/rafaeltuelho/94b391efb3e6fa92d936b4227dd29bd6
 
  1. add this snippet to your `app-config-rhdh` ConfigMap in the `rhdh` namespace.
@@ -660,6 +661,12 @@ data:
               url: https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain
               username: 'admin' # <--- its your argocd admin, NOT THE OPENSHIFT ADMIN!!!
               password: 'argo admin pwd' # your can get it from the openshift-gitops-cluster Secret inside the openshift-gitops namespace
+
+    enabled:
+      github: ${GITHUB_ENABLED}
+      githubOrg: true
+      kubernetes: true
+      argocd: true #<--- enable the plugin here
 ```
 
 ### Enabling OCM Plugin
