@@ -663,240 +663,16 @@ data:
               password: 'argo admin pwd' # your can get it from the openshift-gitops-cluster Secret inside the openshift-gitops namespace
 
     enabled:
-      github: ${GITHUB_ENABLED}
-      githubOrg: true
-      kubernetes: true
       argocd: true #<--- enable the plugin here
 ```
 
-### Enabling OCM Plugin
+### Configuring OCM (Open Cluster Management) Plugin
 
- * Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/ocm/README.md
- * 
-
-### Enabling Quay Container Registry Plugin
-
- * Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay/README.md
- * 
-
----
-
-## Onboarding a Sample Application Entity
-
----
-
-## Creating a sample Golden Path Template
-
-> Developer Hub (based on janus-idp) Plugins and Custom Actions repository: https://github.com/janus-idp/backstage-plugins
-
- * Create a new container image repo on Quay Container Registry: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay-actions/examples/templates/01-quay-template.yaml
-
----
-
-# Openshift DevSpaces 
-> DevSpaces documentation: https://access.redhat.com/documentation/en-us/red_hat_openshift_dev_spaces/3.8
-
- 1. from the Openshift Operator Hub install
-    * Openshift DevSpaces
-    * Kubernetes Image Puller 
- 2. Create new Namepsace (not project) named `openshift-devspaces`
-``` yaml
-kind: Namespace
-apiVersion: v1
-metadata:
-  name: openshift-devspaces
-  labels:
-    kubernetes.io/metadata.name: openshift-devspaces
-spec:
-  finalizers:
-    - kubernetes
-```
-
- 3. Create a new **Red Hat OpenShift Dev Spaces instance Specification** resource definition (`CheCluster`)
-``` yaml
-apiVersion: org.eclipse.che/v2
-kind: CheCluster
-metadata:
-  name: devspaces
-  namespace: openshift-devspaces
-spec:
-  components:
-    cheServer:
-      debug: false
-      logLevel: INFO
-    dashboard: {}
-    devWorkspace:
-      runningLimit: '5'
-    devfileRegistry: {}
-    imagePuller:
-      enable: true
-      spec: {}
-    metrics:
-      enable: true
-    pluginRegistry:
-      openVSXURL: 'https://open-vsx.org'
-  containerRegistry: {}
-  devEnvironments:
-    startTimeoutSeconds: 600
-    secondsOfRunBeforeIdling: -1
-    maxNumberOfWorkspacesPerUser: 5
-    containerBuildConfiguration:
-      openShiftSecurityContextConstraint: container-build
-    defaultEditor: che-incubator/che-code/insiders
-    maxNumberOfRunningWorkspacesPerUser: 5
-    defaultNamespace:
-      autoProvision: true
-      template: <username>-devspaces
-    secondsOfInactivityBeforeIdling: -1
-    storage:
-      # perWorkspaceStrategyPvcConfig:
-      #   claimSize: 10Gi
-      #   storageClass: gp3-csi
-      pvcStrategy: per-workspace
-  gitServices: {}
-  networking:
-    auth:
-      gateway:
-        configLabels:
-          app: che
-          component: che-gateway-config
-
-```
-
-### Integrate Openshift DevSpaces and Github (for access tokens)
-
-Create a GitHub **OAuth** application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
-
-``` sh
-open "https://$GITHUB_HOST_DOMAIN/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-devspaces&oauth_application[url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
-```
-
-Copy the App Id and the Secret Id and set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with its values. Then copy&paste the script content into a file, make it executable (`chmod +x `) and execute it (make sure you are logged in the riwght cluster!).
-
-``` sh
-!#/bin/sh
-export GITHUB_DEV_SPACES_CLIENT_ID=
-export GITHUB_DEV_SPACES_CLIENT_SECRET=
-export DEV_SPACES_NAMESPACE='openshift-devspaces'
-
-oc delete secret github-oauth-config --ignore-not-found=true -n openshift-devspaces
-oc create secret generic github-oauth-config -n openshift-devspaces \
---from-literal=id=$GITHUB_DEV_SPACES_CLIENT_ID \
---from-literal=secret=$GITHUB_DEV_SPACES_CLIENT_SECRET
-
-oc label secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
---overwrite=true app.kubernetes.io/part-of=che.eclipse.org app.kubernetes.io/component=oauth-scm-configuration
-
-oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
---overwrite=true che.eclipse.org/oauth-scm-server=github 
-
-# if using Github Enterprise, also add these two additional annotations
-#oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
-#--overwrite=true che.eclipse.org/scm-server-endpoint=github_enterprise_server_url che.eclipse.org/scm-github-disable-subdomain-isolation="false"
-```
-
- * On your Github Project's repo, edit the `catalog-info.yaml` descriptor and add this `slug` (Backstage terminology)
-```yaml
-#...
-metadata:
-#...
-  annotations:
-    github.com/project-slug: <<organization>>/<<repo>>
-#...
-links:
-  - url: https://devspaces.apps.cluster-domain/#https://github.com/organization/app-repo-name
-    title: OpenShift Dev Spaces (VS Code)
-    icon: web
-
-```
-
- 
-
----
-
-# Install Red Hat Quay Container Registry (if not yet installed)
-> ❗Prerequisites : S3 bucket or ODF
-1. Install the quay operator
-2. Create the configmap file called configmap.yaml and copy the contents below
-
-```yaml
-REGISTRY_TITLE: Red Hat Product Demo System Quay
-SERVER_HOSTNAME: quay-registry.<<Cluster URL>> #e.g quay-registry.apps.cluster-dnqwv.dnqwv.sandbox2019.opentlc.com
-EXTERNAL_TLS_TERMINATION: true
-SUPER_USERS:
-- quayadmin
-FEATURE_USER_INITIALIZE: true
-BROWSER_API_CALLS_XHR_ONLY: false
-DISTRIBUTED_STORAGE_CONFIG:
-  s3Storage:
-    - S3Storage
-    - host: s3.amazonaws.com
-      s3_access_key: <<AWS ACCESS KEY>>
-      s3_secret_key: <<AWS SECRET KEY>>
-      s3_bucket: <<AWS Bucket Name>>
-      storage_path: /datastorage/registry
-DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS: []
-DISTRIBUTED_STORAGE_PREFERENCE:
-    - s3Storage
-```
-3. Create the project namespaces
-```sh
-  oc project quay
-  oc create secret generic config-bundle-secret --from-file config.yaml=./config.yaml
-```
-4. Create the quay registry CR in the quay namespace
-
-```yaml
-apiVersion: quay.redhat.com/v1
-kind: QuayRegistry
-metadata:
-  name: rhdh-quay-registry
-  namespace: quay
-spec:
-  components:
-    - kind: clair
-      managed: true
-    - kind: postgres
-      managed: true
-    - kind: objectstorage
-      managed: false
-    - kind: redis
-      managed: true
-    - kind: horizontalpodautoscaler
-      managed: true
-    - kind: route
-      managed: true
-    - kind: mirror
-      managed: false
-    - kind: monitoring
-      managed: true
-    - kind: tls
-      managed: true
-    - kind: quay
-      managed: true
-    - kind: clairpostgres
-      managed: true
-  configBundleSecret: config-bundle-secret
-```
-
-5. Once quay is up open the quay regsitry url via route created.
-6. Create an account with user/password.
-7. Create an org name `rhdh-demo`
-8. Create an application and generate bearer token.
-9. Testing Quay Registry
-  ```sh
-     podman pull docker.io/redis
-     podman login -u <<user>> <<quay-url>>   # <<user>>/<<password>> is from setup 6 and <<quay-url>> is from the installed quay route
-     podman tag docker.io/redis <<quay-url>>/<<orgname>>/redis
-     podman push <<quay-url>>/<<orgname>>/redis
-     aws configure
-     aws s3 ls <<bucket-name>> --recursive
-  ```
-
-# Configuring OCM (Open Cluster Management) Plugin
 > ❗Prerequisites : ACM must be installed on the cluster
 
-#### Note: Even after installing OCM plugin it will take an hour to sync the OCM cluster details under clusters tab.
+> Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/ocm/README.md
+
+> Note: Even after installing OCM plugin it will take an hour to sync the OCM cluster details under clusters tab.
 
 If ACM is installed in a different cluster then we need to perform the following on HUB cluster. If installed in the same cluster then move directly to step 7.
 
@@ -1052,8 +828,10 @@ type: Opaque
           ocm: true
   ```
 
+### Enabling Quay Container Registry Plugin
 
-# Configuring Quay plugin.
+ > Plugin (upstream) doc: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay/README.md
+
 > ❗Prerequisites : Quay Registry is available and configured with organization and bearer token is available.
 
 1. Create a secret to store quay url and quay bearer token
@@ -1101,6 +879,219 @@ type: Opaque
         - acm-backstage-k8s-plugin-secret
         - quay-secret
 ```
+
+---
+
+## Onboarding a Sample Application Entity
+
+---
+
+## Creating a sample Golden Path Template
+
+> Developer Hub (based on janus-idp) Plugins and Custom Actions repository: https://github.com/janus-idp/backstage-plugins
+
+ * Create a new container image repo on Quay Container Registry: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay-actions/examples/templates/01-quay-template.yaml
+
+<hr>
+
+# Openshift DevSpaces 
+> DevSpaces documentation: https://access.redhat.com/documentation/en-us/red_hat_openshift_dev_spaces/3.8
+
+ 1. from the Openshift Operator Hub install
+    * Openshift DevSpaces
+    * Kubernetes Image Puller 
+ 2. Create new Namepsace (not project) named `openshift-devspaces`
+``` yaml
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: openshift-devspaces
+  labels:
+    kubernetes.io/metadata.name: openshift-devspaces
+spec:
+  finalizers:
+    - kubernetes
+```
+
+ 3. Create a new **Red Hat OpenShift Dev Spaces instance Specification** resource definition (`CheCluster`)
+``` yaml
+apiVersion: org.eclipse.che/v2
+kind: CheCluster
+metadata:
+  name: devspaces
+  namespace: openshift-devspaces
+spec:
+  components:
+    cheServer:
+      debug: false
+      logLevel: INFO
+    dashboard: {}
+    devWorkspace:
+      runningLimit: '5'
+    devfileRegistry: {}
+    imagePuller:
+      enable: true
+      spec: {}
+    metrics:
+      enable: true
+    pluginRegistry:
+      openVSXURL: 'https://open-vsx.org'
+  containerRegistry: {}
+  devEnvironments:
+    startTimeoutSeconds: 600
+    secondsOfRunBeforeIdling: -1
+    maxNumberOfWorkspacesPerUser: 5
+    containerBuildConfiguration:
+      openShiftSecurityContextConstraint: container-build
+    defaultEditor: che-incubator/che-code/insiders
+    maxNumberOfRunningWorkspacesPerUser: 5
+    defaultNamespace:
+      autoProvision: true
+      template: <username>-devspaces
+    secondsOfInactivityBeforeIdling: -1
+    storage:
+      # perWorkspaceStrategyPvcConfig:
+      #   claimSize: 10Gi
+      #   storageClass: gp3-csi
+      pvcStrategy: per-workspace
+  gitServices: {}
+  networking:
+    auth:
+      gateway:
+        configLabels:
+          app: che
+          component: che-gateway-config
+
+```
+
+### Integrate Openshift DevSpaces and Github (for access tokens)
+
+Create a GitHub **OAuth** application to enable Dev Spaces to seamlessly push code changes to the repository for new components created in Red Hat Developer Hub.  
+
+``` sh
+open "https://$GITHUB_HOST_DOMAIN/settings/applications/new?oauth_application[name]=$GITHUB_ORGANIZATION-devspaces&oauth_application[url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO&oauth_application[callback_url]=https://devspaces.apps$OPENSHIFT_CLUSTER_INFO/api/oauth/callback"
+```
+
+Copy the App Id and the Secret Id and set the `GITHUB_DEV_SPACES_CLIENT_ID` and `GITHUB_DEV_SPACES_CLIENT_SECRET` environment variables with its values. Then copy&paste the script content into a file, make it executable (`chmod +x `) and execute it (make sure you are logged in the riwght cluster!).
+
+``` sh
+!#/bin/sh
+export GITHUB_DEV_SPACES_CLIENT_ID=
+export GITHUB_DEV_SPACES_CLIENT_SECRET=
+export DEV_SPACES_NAMESPACE='openshift-devspaces'
+
+oc delete secret github-oauth-config --ignore-not-found=true -n openshift-devspaces
+oc create secret generic github-oauth-config -n openshift-devspaces \
+--from-literal=id=$GITHUB_DEV_SPACES_CLIENT_ID \
+--from-literal=secret=$GITHUB_DEV_SPACES_CLIENT_SECRET
+
+oc label secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
+--overwrite=true app.kubernetes.io/part-of=che.eclipse.org app.kubernetes.io/component=oauth-scm-configuration
+
+oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
+--overwrite=true che.eclipse.org/oauth-scm-server=github 
+
+# if using Github Enterprise, also add these two additional annotations
+#oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
+#--overwrite=true che.eclipse.org/scm-server-endpoint=github_enterprise_server_url che.eclipse.org/scm-github-disable-subdomain-isolation="false"
+```
+
+ * On your Github Project's repo, edit the `catalog-info.yaml` descriptor and add this `slug` (Backstage terminology)
+```yaml
+#...
+metadata:
+#...
+  annotations:
+    github.com/project-slug: <<organization>>/<<repo>>
+#...
+links:
+  - url: https://devspaces.apps.cluster-domain/#https://github.com/organization/app-repo-name
+    title: OpenShift Dev Spaces (VS Code)
+    icon: web
+
+```
+</hr>
+
+# Install Red Hat Quay Container Registry (if not yet installed)
+> ❗Prerequisites : S3 bucket or ODF
+1. Install the quay operator
+2. Create the configmap file called configmap.yaml and copy the contents below
+
+```yaml
+REGISTRY_TITLE: Red Hat Product Demo System Quay
+SERVER_HOSTNAME: quay-registry.<<Cluster URL>> #e.g quay-registry.apps.cluster-dnqwv.dnqwv.sandbox2019.opentlc.com
+EXTERNAL_TLS_TERMINATION: true
+SUPER_USERS:
+- quayadmin
+FEATURE_USER_INITIALIZE: true
+BROWSER_API_CALLS_XHR_ONLY: false
+DISTRIBUTED_STORAGE_CONFIG:
+  s3Storage:
+    - S3Storage
+    - host: s3.amazonaws.com
+      s3_access_key: <<AWS ACCESS KEY>>
+      s3_secret_key: <<AWS SECRET KEY>>
+      s3_bucket: <<AWS Bucket Name>>
+      storage_path: /datastorage/registry
+DISTRIBUTED_STORAGE_DEFAULT_LOCATIONS: []
+DISTRIBUTED_STORAGE_PREFERENCE:
+    - s3Storage
+```
+3. Create the project namespaces
+```sh
+  oc project quay
+  oc create secret generic config-bundle-secret --from-file config.yaml=./config.yaml
+```
+4. Create the quay registry CR in the quay namespace
+
+```yaml
+apiVersion: quay.redhat.com/v1
+kind: QuayRegistry
+metadata:
+  name: rhdh-quay-registry
+  namespace: quay
+spec:
+  components:
+    - kind: clair
+      managed: true
+    - kind: postgres
+      managed: true
+    - kind: objectstorage
+      managed: false
+    - kind: redis
+      managed: true
+    - kind: horizontalpodautoscaler
+      managed: true
+    - kind: route
+      managed: true
+    - kind: mirror
+      managed: false
+    - kind: monitoring
+      managed: true
+    - kind: tls
+      managed: true
+    - kind: quay
+      managed: true
+    - kind: clairpostgres
+      managed: true
+  configBundleSecret: config-bundle-secret
+```
+
+5. Once quay is up open the quay regsitry url via route created.
+6. Create an account with user/password.
+7. Create an org name `rhdh-demo`
+8. Create an application and generate bearer token.
+9. Testing Quay Registry
+  ```sh
+     podman pull docker.io/redis
+     podman login -u <<user>> <<quay-url>>   # <<user>>/<<password>> is from setup 6 and <<quay-url>> is from the installed quay route
+     podman tag docker.io/redis <<quay-url>>/<<orgname>>/redis
+     podman push <<quay-url>>/<<orgname>>/redis
+     aws configure
+     aws s3 ls <<bucket-name>> --recursive
+  ```
+
+</hr>
 
 # Customizing Logo and Themes.
 > Note : Logo's can be added with from svg or image. We need a base64 version of the svg/image
@@ -1154,7 +1145,8 @@ type: Opaque
             - acm-backstage-k8s-plugin-secret
             - quay-secret
             - logo-secret
-    ```    
+    ```
+</hr>    
 
 # Customizing Homepage and TechRadar.    
 
@@ -1196,9 +1188,9 @@ type: Opaque
    ```
 8. Delete the RHDH pod to reload with this new configmap updates.
 
-<hr>
+</hr>
 
-## CI/CD smoke test
+# CI/CD smoke test
 
 1. On your Github Organization create a new PAT
   
@@ -1224,7 +1216,13 @@ type: Opaque
  * App src code: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test
  * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
 
-3. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
+1. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
+ * **switch to brach `no-vaul`**
+  
+   ```sh
+   git checkout no-vault
+   ``` 
+
  * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
  * edit `helm/build/templates/pipelines-git-pat-secret.yaml` and replace `username` and `password`
  * edit `helm/build/templates/vault-quay-basic-secret.yaml` and replace `username` and `password`
@@ -1232,13 +1230,13 @@ type: Opaque
  * make any other necessary change according to your environment
  * save, commit and push
 
-4. Create the Argo Applications by executing:
+2. Create the Argo Applications by executing:
 ``` sh
 #make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
 oc apply -f argo/
 ```
 
-5. Create a webhook to trigger Openshift Piplines automatically
+1. Create a webhook to trigger Openshift Piplines automatically
  * Go to https://github.com/<your org here>/rhdh-springboot-smoke-test/settings/hooks
    * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.uour-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
@@ -1250,7 +1248,7 @@ oc apply -f argo/
    * Mark `Active`
    * Create webhook
 
-6. Finally, open the rhdh-springboot-smoke-test on an IDE and 
+2. Finally, open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
  * a new Pipeline Run should be triggered automatically 
