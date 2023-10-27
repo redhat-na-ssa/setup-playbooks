@@ -649,21 +649,57 @@ data:
 
  > If your ArgoCD is located on a different cluster, please follow these steps describe in this gist for registering an external cluster: https://gist.github.com/rafaeltuelho/94b391efb3e6fa92d936b4227dd29bd6
 
- 1. add this snippet to your `app-config-rhdh` ConfigMap in the `rhdh` namespace.
+ 1. Create a new Secret with the ArgoCD instace info
+ > using the CLI
+
+``` sh
+oc create secret generic backstage-argocd-plugin-secret -n rhdh \
+--from-literal=ARGOCD_INSTANCE_NAME='openshift-gitops' \
+--from-literal=ARGOCD_INSTANCE_URL='https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain' \
+--from-literal=ARGOCD_ADMIN_USERNAME='admin' \
+--from-literal=ARGOCD_ADMIN_TOKEN='<# copy it from from the openshift-gitops-cluster Secret, openshift-gitops namespace>'
+
+```
+
+```yaml
+kind: Secret
+apiVersion: v1
+metadata:
+  name: backstage-argocd-plugin-secret
+  namespace: rhdh
+stringData:
+  ARGOCD_INSTANCE_NAME='openshift-gitops'
+  ARGOCD_INSTANCE_URL='https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain'
+  ARGOCD_ADMIN_USERNAME='admin'
+  ARGOCD_ADMIN_TOKEN='<# copy it from from the openshift-gitops-cluster Secret, openshift-gitops namespace>'
+type: Opaque
+``` 
+
+ 2. add this snippet to your `app-config-rhdh` ConfigMap in the `rhdh` namespace.
 ```yaml
     # optional: this will link to your argoCD web UI for each argoCD application
     argocd:
-      baseUrl: https://openshift-gitops-server-openshift-gitops.apps..yourclusterdomain
+      # use this baseUrl only if you have multiply ArgoCD instances in the same cluster
+      #baseUrl: https://openshift-gitops-server-openshift-gitops.apps..yourclusterdomain
       appLocatorMethods:
         - type: 'config'
           instances:
-            - name: openshift-gitops
-              url: https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain
-              username: 'admin' # <--- its your argocd admin, NOT THE OPENSHIFT ADMIN!!!
-              password: 'argo admin pwd' # your can get it from the openshift-gitops-cluster Secret inside the openshift-gitops namespace
+            - name: ${ARGOCD_INSTANCE_NAME}
+              url: ${ARGOCD_INSTANCE_URL}
+              username: ${ARGOCD_INSTANCE_NAME}
+              password: ${ARGOCD_INSTANCE_NAME}
 
     enabled:
       argocd: true #<--- enable the plugin here
+```
+
+ 3. Upgrade the DevHub Helm values by adding the secret name `acm-backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
+
+```yaml
+    extraEnvVarsSecrets:
+      - rhdh-secret
+      - backstage-k8s-plugin-secret
+      - backstage-argocd-plugin-secret
 ```
 
 ### Configuring OCM (Open Cluster Management) Plugin
@@ -680,14 +716,14 @@ If ACM is installed in a different cluster then we need to perform the following
  > using the CLI
 
 ``` sh
-oc create sa acm-rhdh-k8s-plugin -n rhdh
+oc create sa ocm-rhdh-plugin -n rhdh
 ```
 
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: acm-rhdh-k8s-plugin
+  name: ocm-rhdh-plugin
   namespace: rhdh
 ```
 
@@ -695,7 +731,7 @@ metadata:
  > using the CLI
 
 ``` sh
-oc create token acm-rhdh-k8s-plugin -n rhdh
+oc create token ocm-rhdh-plugin -n rhdh
 ```
 > Copy the token from the output and save it for later!
 
@@ -705,10 +741,10 @@ apiVersion: v1
 kind: Secret
 type: kubernetes.io/service-account-token
 metadata:
-  name: acm-rhdh-k8s-plugin-secret
+  name: ocm-rhdh-plugin-secret
   namespace: rhdh
   annotations:
-    kubernetes.io/service-account.name: amc-rhdh-k8s-plugin
+    kubernetes.io/service-account.name: ocm-rhdh-plugin
 ```
 
  3. Create a ClusterRole
@@ -718,7 +754,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: acm-rhdh-k8s-plugin
+  name: ocm-rhdh-plugin
 rules:
   - apiGroups:
       - cluster.open-cluster-management.io
@@ -743,32 +779,33 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: acm-rhdh-k8s-plugin
+  name: ocm-rhdh-plugin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: acm-rhdh-k8s-plugin
+  name: ocm-rhdh-plugin
 subjects:
   - kind: ServiceAccount
-    name: acm-rhdh-k8s-plugin
+    name: ocm-rhdh-plugin
     namespace: rhdh
 ```
 5. Create a new Secret with the Cluster info for ACM
  > using the CLI
 
 ``` sh
-oc create secret generic backstage-k8s-plugin-secret -n rhdh \
+oc create secret generic backstage-ocm-plugin-secret -n rhdh \
 --from-literal=ACM_K8S_CLUSTER_NAME='<ACM_HUB_ClusterName>>' \
 --from-literal=ACM_K8S_CLUSTER_TOKEN='<ServiceAccount token from step 2>' \
 --from-literal=ACM_K8S_CLUSTER_URL='<<HUB API URL for Openshift>>'
 
 ```
 
+
 ```yaml
 kind: Secret
 apiVersion: v1
 metadata:
-  name: acm-backstage-k8s-plugin-secret
+  name: backstage-ocm-plugin-secret
   namespace: rhdh
 stringData:
   ACM_K8S_CLUSTER_NAME: 'hub-cluster'
@@ -806,7 +843,8 @@ type: Opaque
       extraEnvVarsSecrets:
         - rhdh-secret
         - backstage-k8s-plugin-secret
-        - acm-backstage-k8s-plugin-secret # from step #5
+        - backstage-argocd-plugin-secret
+        - backstage-ocm-plugin-secret
   ```
 
 7. Update app-config-rhdh.yaml only when ACM is installed on same cluster as RHDH If not please ignore this step.
@@ -837,10 +875,12 @@ type: Opaque
 1. Create a secret to store quay url and quay bearer token
 
 ```sh
-   export QUAY_URL=<<Quay URL>>
-   export QUAY_BEARER_TOKEN=<<Quay bearer token>>
+   export QUAY_URL=<Quay URL>
+   export QUAY_BEARER_TOKEN=<Quay bearer token>
 
-   oc create secret generic quay-secret -n rhdh --from-literal QUAY_URL=${QUAY_URL} --from-literal QUAY_BEARER_TOKEN=${QUAY_BEARER_TOKEN}
+   oc create secret generic backstage-quay-plugin-secret -n rhdh \
+   --from-literal QUAY_URL=${QUAY_URL} \
+   --from-literal QUAY_BEARER_TOKEN=${QUAY_BEARER_TOKEN}
 ```
 
 2. Add the following to app-config-rhdh.yaml for configuring quay plugin
@@ -876,8 +916,9 @@ type: Opaque
      extraEnvVarsSecrets:
         - rhdh-secret
         - backstage-k8s-plugin-secret
-        - acm-backstage-k8s-plugin-secret
-        - quay-secret
+        - backstage-argocd-plugin-secret
+        - backstage-ocm-plugin-secret
+        - backstage-quay-plugin-secret
 ```
 
 ---
@@ -892,7 +933,7 @@ type: Opaque
 
  * Create a new container image repo on Quay Container Registry: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay-actions/examples/templates/01-quay-template.yaml
 
-<hr>
+</hr>
 
 # Openshift DevSpaces 
 > DevSpaces documentation: https://access.redhat.com/documentation/en-us/red_hat_openshift_dev_spaces/3.8
@@ -1163,6 +1204,10 @@ spec:
 3. Update the data.json file under `<<Project Root>>/data/home/` for home page customizations
 4. Update the data.json file under `<<Project Root>>/data/tech-radar/` for tech-radar page customization
 5. Perform a s2i deployment to rhdh namespace
+
+> ❗NOTE: if you prefer (or if you can't use build the image inside Openshift) you can build the image locally (using Podman or Docker) and then push it to any Enterprise private Registry (eg. Quay).
+> ❗If your Constainer Registry is insecure (uses a self-signed Certificate), please refer to this guide in the Openshift Docs: https://docs.openshift.com/container-platform/4.10/openshift_images/image-configuration.html
+
 6. Edit the existing logo-secret for homepage/tech-radar customization
    > Note : Add the following keys to `logo-secret`
      ```yaml
