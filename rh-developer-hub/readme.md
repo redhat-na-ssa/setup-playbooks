@@ -1239,7 +1239,7 @@ spec:
 
 1. On your Github Organization create a new PAT
   
-  * Go to https://github.com/settings/personal-access-tokens/
+  * Go to https://github.com/settings/tokens?type=beta
   ```
   Token name: rhdh
   Resource owner: Select your Org from the list
@@ -1252,36 +1252,39 @@ spec:
     github_pat_11AA---------------
   ```
 
-2. On Quay Registry Organization
-  create a new repo for the app image (eg: rhdh-springboot-smoke-test)
-  now create a new Robot account and grant it with Write permission on the created repo
-  Copy the Robot account password and the .dockerconfigjson Kubernetes secret as well
+2. On Quay, go to the Organization and 
+ * create a new repo for the app image (eg: rhdh-springboot-smoke-test) now create a new Robot account and grant it with Write permission on the created repo
+ * Copy the Robot account password and the .dockerconfigjson Kubernetes secret as well
 
-2. Clone these two git repos
+1. Clone these two git repos
  * App src code: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test
  * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
 
-1. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
- * **switch to brach `no-vaul`**
+2. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
+ * **switch to brach `no-vault`**
   
    ```sh
    git checkout no-vault
    ``` 
 
  * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
- * edit `helm/build/templates/pipelines-git-pat-secret.yaml` and replace `username` and `password`
- * edit `helm/build/templates/vault-quay-basic-secret.yaml` and replace `username` and `password`
- * edit `helm/build/templates/vault-quay-config-secret.yaml` and replace `.dockerconfigjson` with the your Quay robot secret.
  * make any other necessary change according to your environment
  * save, commit and push
 
-2. Create the Argo Applications by executing:
+3. Create the Argo Applications by executing:
 ``` sh
 #make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
 oc apply -f argo/
 ```
 
-1. Create a webhook to trigger Openshift Piplines automatically
+4. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
+   * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
+
+  ![Secrets values parameters](assets/argocd-app-params.png)
+
+   * then replace the secrets with the tokes you copiend from Github PAT and Quay Robot account.
+
+5. Create a webhook to trigger Openshift Piplines automatically
  * Go to https://github.com/<your org here>/rhdh-springboot-smoke-test/settings/hooks
    * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.uour-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
@@ -1293,7 +1296,7 @@ oc apply -f argo/
    * Mark `Active`
    * Create webhook
 
-2. Finally, open the rhdh-springboot-smoke-test on an IDE and 
+6. Finally, open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
  * a new Pipeline Run should be triggered automatically 
