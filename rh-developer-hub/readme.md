@@ -1287,6 +1287,9 @@ spec:
    ``` 
 
  * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
+ * replace `quay.io` with private quay registry url
+ * replace `redhat_na_ssa` with Org name from quay
+
  * make any other necessary change according to your environment
  * save, commit and push
 
