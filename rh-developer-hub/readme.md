@@ -1304,8 +1304,8 @@ oc apply -f argo/
    * then replace the secrets with the tokes you copiend from Github PAT and Quay Robot account.
 
 5. Create a webhook to trigger Openshift Piplines automatically
- * Go to https://github.com/<your org here>/rhdh-springboot-smoke-test/settings/hooks
-   * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.uour-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
+ * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
+   * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
    * Secret: enter any random string
    * SSL verification: Disabled
@@ -1315,7 +1315,18 @@ oc apply -f argo/
    * Mark `Active`
    * Create webhook
 
-6. Finally, open the rhdh-springboot-smoke-test on an IDE and 
+6. open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
- * a new Pipeline Run should be triggered automatically 
+ * a new Pipeline Run should be triggered automatically
+
+7. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
+ * On Developer Hub, click on the `Create` lef menu item.
+
+  ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
+
+ * Then, click on the `Register Existing Component` button and enter the Github repo URL path for the `catalog-info.yaml` manifest file: `https://github.com/your-org-here/rhdh-springboot-smoke-test/blob/main/catalog-info.yaml`
+
+  ![Secrets values parameters](assets/springboot-app-catalog-onboard2.png)
+
+ * Then create the Entity. It should apper in the `Catalog` view.
