@@ -1273,13 +1273,13 @@ spec:
 
 2. On Quay, go to the Organization and 
  * create a new repo for the app image (eg: rhdh-springboot-smoke-test) now create a new Robot account and grant it with Write permission on the created repo
- * Copy the Robot account password and the .dockerconfigjson Kubernetes secret as well
+ * Copy the Robot account password and the `.dockerconfigjson` Kubernetes secret as well
 
-1. Clone these two git repos
+3. Clone these two git repos
  * App src code: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test
  * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
 
-2. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
+4. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
  * :exclamation: **switch to brach `no-vault`** :exclamation: 
   
    ```sh
@@ -1290,13 +1290,13 @@ spec:
  * make any other necessary change according to your environment
  * save, commit and push
 
-3. Create the Argo Applications by executing:
+5. Create the Argo Applications by executing:
 ``` sh
 #make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
 oc apply -f argo/
 ```
 
-4. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
+6. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
    * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
 
   ![Secrets values parameters](assets/argocd-app-params.png)
@@ -1305,7 +1305,7 @@ oc apply -f argo/
   
    > :exclamation: NOTE: **on production use a Vault mechanism to manage these secrets!!!** :exclamation:
 
-1. Create a webhook to trigger Openshift Piplines automatically
+7. Create a webhook to trigger Openshift Piplines automatically
  * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
    * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
@@ -1317,12 +1317,12 @@ oc apply -f argo/
    * Mark `Active`
    * Create webhook
 
-2. open the rhdh-springboot-smoke-test on an IDE and 
+8. open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
  * a new Pipeline Run should be triggered automatically
 
-3. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
+9. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
  * On Developer Hub, click on the `Create` lef menu item.
 
   ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
