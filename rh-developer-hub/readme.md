@@ -872,11 +872,23 @@ type: Opaque
 
 > ❗Prerequisites : Quay Registry is available and configured with organization and bearer token is available.
 
-1. Create a secret to store quay url and quay bearer token
+1. On Quay console, go to the Organization and create a new oAuth App
+ 
+![Quay Organization oAuth App](assets/quay_oauth_app.png)
+
+2. Generate an Access Token for this oAuth App.
+   
+ * Make sure to check the `View all visible repositories` 
+
+![Secrets values parameters](assets/quay_oauth_app_token.png)
+
+ * Copy the token and save it in a text editor.
+
+3. Create a secret to store quay url and quay bearer token
 
 ```sh
-   export QUAY_URL=<Quay URL>
-   export QUAY_BEARER_TOKEN=<Quay bearer token>
+   export QUAY_URL=<Quay URL> #eg. https://quay.io
+   export QUAY_BEARER_TOKEN=<Quay token from the oauth App>
 
    oc create secret generic backstage-quay-plugin-secret -n rhdh \
    --from-literal QUAY_URL=${QUAY_URL} \
@@ -919,6 +931,13 @@ type: Opaque
         - backstage-argocd-plugin-secret
         - backstage-ocm-plugin-secret
         - backstage-quay-plugin-secret
+```
+
+4. to be able to pull info from Quay container registry you need to add the following annotation in your app's `catalog-info.yaml` manifest:
+
+```yaml
+  annotations:
+    quay.io/repository-slug: <organization>/<app-image-repo>
 ```
 
 ---
@@ -1043,7 +1062,7 @@ oc annotate secret github-oauth-config -n $DEV_SPACES_NAMESPACE \
 metadata:
 #...
   annotations:
-    github.com/project-slug: <<organization>>/<<repo>>
+    github.com/project-slug: <organization>/<repo>
 #...
 links:
   - url: https://devspaces.apps.cluster-domain/#https://github.com/organization/app-repo-name
@@ -1060,7 +1079,7 @@ links:
 
 ```yaml
 REGISTRY_TITLE: Red Hat Product Demo System Quay
-SERVER_HOSTNAME: quay-registry.<<Cluster URL>> #e.g quay-registry.apps.cluster-dnqwv.dnqwv.sandbox2019.opentlc.com
+SERVER_HOSTNAME: quay-registry.<Cluster URL> #e.g quay-registry.apps.cluster-dnqwv.dnqwv.sandbox2019.opentlc.com
 EXTERNAL_TLS_TERMINATION: true
 SUPER_USERS:
 - quayadmin
@@ -1181,11 +1200,11 @@ spec:
 
     ```yaml
         extraEnvVarsSecrets:
-            - rhdh-secret
-            - backstage-k8s-plugin-secret
-            - acm-backstage-k8s-plugin-secret
-            - quay-secret
-            - logo-secret
+          - rhdh-secret
+          - backstage-k8s-plugin-secret
+          - backstage-argocd-plugin-secret
+          - backstage-ocm-plugin-secret
+          - backstage-quay-plugin-secret
     ```
 </hr>    
 
@@ -1261,7 +1280,7 @@ spec:
  * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
 
 2. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
- * **switch to brach `no-vault`**
+ * :exclamation: **switch to brach `no-vault`** :exclamation: 
   
    ```sh
    git checkout no-vault
