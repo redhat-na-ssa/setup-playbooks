@@ -1287,19 +1287,24 @@ spec:
    ``` 
 
  * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
- * replace `quay.io` with private quay registry url
- * replace `redhat_na_ssa` with Org name from quay
-
- * make any other necessary change according to your environment
+ * Make any other necessary change according to your environment
+   * replace `quay.io` with your private Quay registry url
+   * replace `redhat_na_ssa` with your Org name on Quay
+   * replace the cluster domain url with your cluster domain url
  * save, commit and push
 
 5. Create the Argo Applications by executing:
+   
+  > :exclamation: NOTE: you may need add Git credentials for these repos so ArgoCD server is able to clone them. 
+  >  * You can do this using the UI: Settings -> Repositories. Use a git PAT instead of your own password here.
+  >  * or declaratively as described here: https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repository-credentials
+
 ``` sh
 #make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
-oc apply -f argo/
+oc apply -f argocd/
 ```
 
-6. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
+1. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
    * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
 
   ![Secrets values parameters](assets/argocd-app-params.png)
