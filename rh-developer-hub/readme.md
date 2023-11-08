@@ -945,13 +945,237 @@ type: Opaque
 
 ## Onboarding a Sample Application Entity
 
+We have prepared an sample Springboot backend App that we'll be using as a **&CI/CD smoke test**. This sample app has two Git repos, one for the src code and another one for the CI/CD manifests (GitOps repo).
+
+1. On your Github Organization create a new PAT
+  
+  * Go to https://github.com/settings/tokens?type=beta
+  ```
+  Token name: rhdh
+  Resource owner: Select your Org from the list
+  Check All repositories
+  Repository Permissions:
+    Contents: Read & Write
+    Pull Requests: Read & Write
+    Webhooks: Read & Write
+  Copy the token:
+    github_pat_11AA---------------
+  ```
+
+2. On Quay, go to the Organization and 
+ * Create a new repo for the app image named `rhdh-springboot-smoke-test`. 
+ * Now create a new Robot Account and grant it with Write permission on the `rhdh-springboot-smoke-test` repository.
+ * Copy the Robot account password and the `.dockerconfigjson` Kubernetes secret as well.
+
+3. Clone these two git repos:
+ * App src code: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test
+ * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
+
+4. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
+ * :exclamation: **switch to brach `no-vault`** :exclamation: 
+  
+   ```sh
+   git checkout no-vault
+   ``` 
+
+ * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
+ * Make any other necessary change according to your environment
+   * replace `quay.io` with your private Quay registry url
+   * replace `redhat_na_ssa` with your Org name on Quay
+   * replace the cluster domain url with your cluster domain url
+ * save, commit and push
+
+5. Create Argo Applications by executing:
+   
+  > :exclamation: NOTE: you may need add Git credentials for these repos so ArgoCD server is able to clone them. 
+  >  * You can do this using the UI: Settings -> Repositories. Use a git PAT instead of your own password here.
+  >  * or declaratively as described here: https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repository-credentials
+
+``` sh
+#make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
+oc apply -f argocd/
+```
+
+1. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
+   * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
+
+  ![Secrets values parameters](assets/argocd-app-params.png)
+
+   * then replace the secrets with tokens you copiend from Github PAT and Quay Robot account.
+  
+   > :exclamation: NOTE: **on production use a Vault mechanism to manage these secrets!!!** :exclamation:
+
+1. Create a webhook to trigger Openshift Piplines automatically
+ * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
+   * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
+   * Content type: `application/json`
+   * Secret: enter any random string
+   * SSL verification: Disabled
+   * Which events would you like to trigger this webhook?
+     * Let me select individual events.
+     * mark `Branch or tag creation` and `Pushes` 
+   * Mark `Active`
+   * Create webhook
+
+2. open the rhdh-springboot-smoke-test on an IDE and 
+ * make ay change to the src code.
+ * save, commmit and push
+ * a new Pipeline Run should be triggered automatically
+
+3. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
+ * On Developer Hub, click on the `Create` lef menu item.
+
+  ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
+
+ * Then, click on the `Register Existing Component` button and enter the Github repo URL path for the `catalog-info.yaml` manifest file: `https://github.com/your-org-here/rhdh-springboot-smoke-test/blob/main/catalog-info.yaml`
+
+  ![Secrets values parameters](assets/springboot-app-catalog-onboard2.png)
+
+ * Then create the Entity. It should apper in the `Catalog` view.
+
+4. Check the Kubernetes, Tekton, Registry (Quay) views for this Application Entity on Developer Hub to see if all the integrations are working and the data is being properly pulled from the external sources.
+
 ---
 
-## Creating a sample Golden Path Template
+## Creating a sample Golden Path Template (GPT)
 
-> Developer Hub (based on janus-idp) Plugins and Custom Actions repository: https://github.com/janus-idp/backstage-plugins
+We'll be using [this repository](https://github.com/redhat-na-ssa/software-templates.git) as a reference to build a new GPT. So clone this repo locally as we'll be copying some manifests from it later in this step.
 
- * Create a new container image repo on Quay Container Registry: https://github.com/janus-idp/backstage-plugins/blob/main/plugins/quay-actions/examples/templates/01-quay-template.yaml
+> NOTE: Golden Path Templates is also called [**Software Templates**](https://backstage.spotify.com/learn/onboarding-software-to-backstage/setting-up-software-templates/8-anatomy-software-template/) in the Backstage Project terminology. 
+
+Every Software Template is taylored to a specific Development Environment and its Software Development Life Cycle processes.
+
+The Template we'll be building here is composed by the following actions:
+ * Source Code and GitOps manifests repositories creation on Github
+ * Sample Springboot backend App suing Apache Maven for building
+ * CI pipeline using Tekton
+ * CD Pipeline using ArgoCD
+ * Quay Container Registry 
+
+To build a new Template we need two elements: a **template.yaml manifest** and a **skeleton directory**.
+
+1. Create a new e empty git repository named `<org-name>-software-templates` in your Git Organization and clone it localy
+2. Open this new empty repo using an IDE (eg. VSCode)
+3. Create the following initial directoy structure:
+
+```
+.
+├── skeletons
+│   ├── catalog-info
+│   │   
+└── templates
+    └── github
+        ├── spring-boot-backend
+```
+
+4. To make things easy lets copy some files from our [software-templates reference repo](https://github.com/redhat-na-ssa/software-templates.git).
+ * start by copying the `software-templates/skeletons/catalog-info/catalog-info.yaml` file into the same path in your `<org-name>-software-templates/`
+ * now lets copy the Springboot Application **skeleton directory**. Copy the `software-templates/templates/github/spring-boot-backend` file into the same path in your `<org-name>-software-templates/`
+ * here you can rename `spring-boot-backend` to any other name you may want to.
+6. Now lets inspect this Application **skeleton directory** to understand hos it's composed.
+
+```
+├── spring-boot-backend
+│   ├── README.md
+│   ├── manifests
+│   │   ├── argocd
+│   │   └── helm
+│   ├── skeleton
+│   │   ├── README.md
+│   │   ├── devfile.yaml
+│   │   ├── mvnw
+│   │   ├── mvnw.cmd
+│   │   ├── pom.xml
+│   │   ├── src
+│   │   └── target
+│   └── template.yaml
+```
+
+ * `README.md` is where you can describe your Software Template. Include any information you may consider important for anyone using this template.
+ * `manifests` contains two sets of manifests
+   * `argocd` contains the ArgoCD Application manifests used to deploy the application into your target cluster
+   * `helm` contains manifests used to build (CI with Tekton) and deploy (Kubernetes manifests) the initial version of the App.
+ * `skeleton` contains the actual app source code (or in our case, the Springboot Maven project structure)
+ * `template.yaml` manifest defines what are the Parameters and Actions to used when a Developer consumes this Template on Developer Hub.
+
+7. The `template.yaml` is the main manifest here. If you open it on your IDE, you will notice the first portion is similar to a standard Kubernetes manifest defining the `apiVersion`, `Kind` and `metadata`. The `spec` section is then has three main sections: 
+ * `parameters`: defines all the user **input parameters** needed by this template 
+ * `steps`: defines all the **actions** performed to generate the Applucation scaffolding
+ * `output`: defines what should be shown in the screeen at the end of the scaffolding process.
+  
+ > For more details on Backstage Software Template Kind defnition see https://backstage.io/docs/features/software-catalog/descriptor-format/#kind-template
+
+8. Your Template's **actions** will define what set of **parameters** you will need. So, first you need to decide/define which acttions will be performed by this template. In our sample template we perform the following actions (see the `steps` section in the `template.yaml` manifest):
+ * `sourceCodeTemplate`: Generating the Source Code Component
+ * `catalogTemplate`: Generating the Catalog Info Component
+ * `publish`: Publishing to the Source Code Repository
+ * `register`: Registering the Catalog Info Component
+ * `template-gitops-deployment`: Generating Deployment Resources
+ * `publish-gitops`: Publishing to Resource Repository
+ * `create-argocd-resources`: Create ArgoCD Resources
+
+> Backstage comes with a set of common [built-in actions](https://backstage.io/docs/features/software-templates/builtin-actions), Red Hat Developer Hub extend this set with [additional plugins and actions](https://github.com/janus-idp/backstage-plugins/tree/main/plugins) provided by the Janus IDP project
+
+9. Finaly we need to look at the template files (directories, manifests, source-code files). 
+ * Notice that they are all templatized using a syntax like `${values.something}` which comes from the input parameters defined in each `step action` on the `template.yaml` manifest. So, for instance when you exand the `spring-boot-backend` directory you see this: 
+
+```
+.
+├── README.md
+├── manifests
+│   ├── argocd
+│   │   ├── ${{values.component_id}}-argocd-app-dev-build.yaml #<-- templating here
+│   │   ├── ${{values.component_id}}-argocd-app-dev.yaml
+│   │   ├── ${{values.component_id}}-argocd-app-preprod.yaml
+│   │   ├── ${{values.component_id}}-argocd-app-prod.yaml
+│   │   └── ${{values.component_id}}-argocd-repo.yaml
+│   └── helm
+│       ├── app
+│       └── build
+├── skeleton
+│   ├── README.md
+│   ├── devfile.yaml
+│   ├── mvnw
+│   ├── mvnw.cmd
+│   ├── pom.xml
+│   ├── src
+│   │   ├── main
+│   │   │   ├── docker
+│   │   │   ├── java
+│   │   │   │   └── ${{values.javaPackageName}} #<-- templating here
+│   │   │   └── resources
+│   │   └── test
+│   │       ├── java
+│   │       │   └── ${{values.javaPackageName}} #<-- templating here
+│   │       └── resources
+└── template.yaml
+```
+
+If you open a Java class file for instance:
+
+```java
+package ${{ values.groupId }}; // <-- templating here
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class SpringBootAppApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(SpringBootAppApplication.class, args);
+	}
+
+}
+```
+
+ * During the template's steps (actions) processing Backstage will replace them to the actual parameters value.
+  
+10. Now we know how the this templating mechanism works, its time to copy our own Java project under the `<orga-name>software-templates/templates/github/spring-boot-backend/skeleton` and start doing our own customization using the Backstage templating mechanism.
+11. After you finish the changes, commit and push to git.
+12. Finally we need to import our customized Software Template catalog into Developer Hub. 
+ * To do that open Developer Hub portal
+ * Open the Catalog view, click on `Create` button (top-right), click on `Register Existing Component` and enter the git repo URL of our template.  
 
 </hr>
 
@@ -1254,90 +1478,3 @@ spec:
 8. Delete the RHDH pod to reload with this new configmap updates.
 
 </hr>
-
-# CI/CD smoke test
-
-1. On your Github Organization create a new PAT
-  
-  * Go to https://github.com/settings/tokens?type=beta
-  ```
-  Token name: rhdh
-  Resource owner: Select your Org from the list
-  Check All repositories
-  Repository Permissions:
-    Contents: Read & Write
-    Pull Requests: Read & Write
-    Webhooks: Read & Write
-  Copy the token:
-    github_pat_11AA---------------
-  ```
-
-2. On Quay, go to the Organization and 
- * create a new repo for the app image (eg: rhdh-springboot-smoke-test) now create a new Robot account and grant it with Write permission on the created repo
- * Copy the Robot account password and the `.dockerconfigjson` Kubernetes secret as well
-
-3. Clone these two git repos
- * App src code: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test
- * App CI/CD manifests: https://github.com/redhat-na-ssa/rhdh-springboot-smoke-test-gitops
-
-4. Open the `rhdh-springboot-smoke-test-gitops` on a VSCode or Text editor and perform the following steps:
- * :exclamation: **switch to brach `no-vault`** :exclamation: 
-  
-   ```sh
-   git checkout no-vault
-   ``` 
-
- * If using any git service other than gihub.com, replace every occurrence of `github.com` by your git service url.
- * Make any other necessary change according to your environment
-   * replace `quay.io` with your private Quay registry url
-   * replace `redhat_na_ssa` with your Org name on Quay
-   * replace the cluster domain url with your cluster domain url
- * save, commit and push
-
-5. Create Argo Applications by executing:
-   
-  > :exclamation: NOTE: you may need add Git credentials for these repos so ArgoCD server is able to clone them. 
-  >  * You can do this using the UI: Settings -> Repositories. Use a git PAT instead of your own password here.
-  >  * or declaratively as described here: https://argo-cd.readthedocs.io/en/stable/operator-manual/declarative-setup/#repository-credentials
-
-``` sh
-#make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
-oc apply -f argocd/
-```
-
-1. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
-   * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
-
-  ![Secrets values parameters](assets/argocd-app-params.png)
-
-   * then replace the secrets with tokens you copiend from Github PAT and Quay Robot account.
-  
-   > :exclamation: NOTE: **on production use a Vault mechanism to manage these secrets!!!** :exclamation:
-
-1. Create a webhook to trigger Openshift Piplines automatically
- * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
-   * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
-   * Content type: `application/json`
-   * Secret: enter any random string
-   * SSL verification: Disabled
-   * Which events would you like to trigger this webhook?
-     * Let me select individual events.
-     * mark `Branch or tag creation` and `Pushes` 
-   * Mark `Active`
-   * Create webhook
-
-2. open the rhdh-springboot-smoke-test on an IDE and 
- * make ay change to the src code.
- * save, commmit and push
- * a new Pipeline Run should be triggered automatically
-
-3. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
- * On Developer Hub, click on the `Create` lef menu item.
-
-  ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
-
- * Then, click on the `Register Existing Component` button and enter the Github repo URL path for the `catalog-info.yaml` manifest file: `https://github.com/your-org-here/rhdh-springboot-smoke-test/blob/main/catalog-info.yaml`
-
-  ![Secrets values parameters](assets/springboot-app-catalog-onboard2.png)
-
- * Then create the Entity. It should apper in the `Catalog` view.
