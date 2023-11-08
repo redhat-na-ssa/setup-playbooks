@@ -873,7 +873,8 @@ type: Opaque
 > ❗Prerequisites : Quay Registry is available and configured with organization and bearer token is available.
 
 1. On Quay console, go to the Organization and create a new oAuth App
- 
+> Doc reference: https://docs.quay.io/api/
+
 ![Quay Organization oAuth App](assets/quay_oauth_app.png)
 
 2. Generate an Access Token for this oAuth App.
@@ -1293,7 +1294,7 @@ spec:
    * replace the cluster domain url with your cluster domain url
  * save, commit and push
 
-5. Create the Argo Applications by executing:
+5. Create Argo Applications by executing:
    
   > :exclamation: NOTE: you may need add Git credentials for these repos so ArgoCD server is able to clone them. 
   >  * You can do this using the UI: Settings -> Repositories. Use a git PAT instead of your own password here.
@@ -1309,11 +1310,11 @@ oc apply -f argocd/
 
   ![Secrets values parameters](assets/argocd-app-params.png)
 
-   * then replace the secrets with the tokes you copiend from Github PAT and Quay Robot account.
+   * then replace the secrets with tokens you copiend from Github PAT and Quay Robot account.
   
    > :exclamation: NOTE: **on production use a Vault mechanism to manage these secrets!!!** :exclamation:
 
-7. Create a webhook to trigger Openshift Piplines automatically
+1. Create a webhook to trigger Openshift Piplines automatically
  * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
    * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
@@ -1325,12 +1326,12 @@ oc apply -f argocd/
    * Mark `Active`
    * Create webhook
 
-8. open the rhdh-springboot-smoke-test on an IDE and 
+2. open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
  * a new Pipeline Run should be triggered automatically
 
-9. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
+3. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
  * On Developer Hub, click on the `Create` lef menu item.
 
   ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
