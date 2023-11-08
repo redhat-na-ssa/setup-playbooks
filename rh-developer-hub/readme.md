@@ -1172,6 +1172,9 @@ public class SpringBootAppApplication {
  * During the template's steps (actions) processing Backstage will replace them to the actual parameters value.
   
 10. Now we know how the this templating mechanism works, its time to copy our own Java project under the `<orga-name>software-templates/templates/github/spring-boot-backend/skeleton` and start doing our own customization using the Backstage templating mechanism.
+ 
+ > To learn more on how to write Backstage Software Templates see https://backstage.io/docs/features/software-templates/writing-templates/
+
 11. After you finish the changes, commit and push to git.
 12. Finally we need to import our customized Software Template catalog into Developer Hub. 
  * To do that open Developer Hub portal
