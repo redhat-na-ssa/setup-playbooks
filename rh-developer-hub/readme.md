@@ -713,6 +713,12 @@ oc create secret generic github-repo-teamplate-creds -n openshift-gitops \
 --from-literal=githubAppInstallationID='get from the Github Organization settings' \
 --from-literal=githubAppPrivateKey=$GITHUB_APP_PRIVATE_KEY_FILE \
 --from-literal=url='your github enterprise url'
+
+oc label secret github-repo-teamplate-creds -n rhdh \
+--overwrite=true argocd.argoproj.io/secret-type=repo-creds
+
+oc annotate secret github-repo-teamplate-creds -n rhdh \
+--overwrite=true managed-by=argocd.argoproj.io
 ```
 
 using the Openshft Console
