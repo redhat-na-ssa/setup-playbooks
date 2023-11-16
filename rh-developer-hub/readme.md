@@ -105,7 +105,7 @@ export GITHUB_ORG_URL=https://$GITHUB_HOST_DOMAIN/$GITHUB_ORGANIZATION
     export GITHUB_APP_ID=
     export GITHUB_APP_CLIENT_ID=
     export GITHUB_APP_CLIENT_SECRET=
-    export GITHUB_APP_PRIVATE_KEY="$(< /path/to/github-app-key.pem)"
+    export GITHUB_APP_PRIVATE_KEY_FILE="$(< /path/to/github-app-key.pem)"
     ```
 
     ![Organization Client Info](assets/org-client-info.png)
@@ -128,7 +128,7 @@ export GITHUB_ORG_URL=https://$GITHUB_HOST_DOMAIN/$GITHUB_ORGANIZATION
 export GITHUB_APP_ID='123'
 export GITHUB_APP_CLIENT_ID='random string'
 export GITHUB_APP_CLIENT_SECRET='random string'
-export GITHUB_APP_PRIVATE_KEY="$(< github-app-key.pem)"
+export GITHUB_APP_PRIVATE_KEY_FILE="$(< github-app-key.pem)"
 ```
 
 Source it before going to the next session
@@ -191,10 +191,9 @@ oc create secret generic rhdh-secret -n rhdh \
 --from-literal=GITHUB_APP_APP_ID=$GITHUB_APP_APP_ID \
 --from-literal=GITHUB_APP_CLIENT_ID=$GITHUB_APP_CLIENT_ID \
 --from-literal=GITHUB_APP_CLIENT_SECRET=$GITHUB_APP_CLIENT_SECRET \
---from-literal=GITHUB_APP_PRIVATE_KEY=$GITHUB_APP_PRIVATE_KEY \
+--from-literal=GITHUB_APP_PRIVATE_KEY_FILE=$GITHUB_APP_PRIVATE_KEY_FILE \
 --from-literal=GITHUB_APP_WEBHOOK_URL=$GITHUB_APP_WEBHOOK_URL \
---from-literal=GITHUB_APP_WEBHOOK_SECRET=$GITHUB_APP_WEBHOOK_SECRET \
---from-literal=GITHUB_ENABLED=true
+--from-literal=GITHUB_APP_WEBHOOK_SECRET=$GITHUB_APP_WEBHOOK_SECRET
 ```
 
 Your secret should look like this.
@@ -205,16 +204,15 @@ apiVersion: v1
 metadata:
   name: rhdh-secret
   namespace: rhdh
-data:
+stringData:
   GITHUB_APP_APP_ID: 
   GITHUB_APP_CLIENT_ID: 
   GITHUB_APP_CLIENT_SECRET: 
-  GITHUB_APP_PRIVATE_KEY: 
+  GITHUB_APP_PRIVATE_KEY_FILE: 
   GITHUB_APP_WEBHOOK_URL: 
   GITHUB_APP_WEBHOOK_SECRET: 
-  GITHUB_ENABLED: 
   GITHUB_ORG_URL: 
-type: Opaque
+
 ```
 ### Additional RHDH Config Map
 This ConfigMap inject adtional config to the DevHub instance.
@@ -246,7 +244,7 @@ data:
               webhookUrl: ${GITHUB_APP_WEBHOOK_URL}
               webhookSecret: ${GITHUB_APP_WEBHOOK_SECRET}
               privateKey: |
-                ${GITHUB_APP_PRIVATE_KEY}
+                ${GITHUB_APP_PRIVATE_KEY_FILE}
                 
     auth:
       environment: development
@@ -269,7 +267,7 @@ data:
             orgUrl: ${GITHUB_ORG_URL}        
 
     enabled:
-      github: ${GITHUB_ENABLED} 
+      github: true
       githubOrg: true   
 ```
 
@@ -423,7 +421,7 @@ Now wait for the RHDH POD to be restarted and test it.
 
 ### Enabling Kubernetes Plugin
 
-> We assume all the components there is being integrated with Developer Hub is installed in the same cluster hosting RHDH instance. If some of the compoenents (eg. ArgoCD, ACM, ACS, etc) is running on a different cluster,
+> We assume all the components that is being integrated with Developer Hub is installed in the same cluster hosting RHDH instance. If some of the compoenents (eg. ArgoCD, ACM, ACS, etc) is running on a different cluster,
 > you may need to repeat this step on other clusters.
 
  1. create a new SA
@@ -588,7 +586,6 @@ stringData:
   K8S_CLUSTER_NAME: 'development-cluster'
   K8S_CLUSTER_TOKEN: 'comes from the secret token create at step #2 (k8s-plugin-secret)'
   K8S_CLUSTER_URL: 'copy your cluster api url (with the :6343)'
-type: Opaque
 ``` 
 
  6. Enable the Kubernetes Plugin in the DevHub Config Map
@@ -668,11 +665,10 @@ metadata:
   name: backstage-argocd-plugin-secret
   namespace: rhdh
 stringData:
-  ARGOCD_INSTANCE_NAME='openshift-gitops'
-  ARGOCD_INSTANCE_URL='https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain'
-  ARGOCD_ADMIN_USERNAME='admin'
-  ARGOCD_ADMIN_TOKEN='<# copy it from from the openshift-gitops-cluster Secret, openshift-gitops namespace>'
-type: Opaque
+  ARGOCD_INSTANCE_NAME: 'openshift-gitops'
+  ARGOCD_INSTANCE_URL: 'https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain'
+  ARGOCD_ADMIN_USERNAME: 'admin'
+  ARGOCD_ADMIN_TOKEN: '<# copy it from from the openshift-gitops-cluster Secret, openshift-gitops namespace>'
 ``` 
 
  2. add this snippet to your `app-config-rhdh` ConfigMap in the `rhdh` namespace.
@@ -686,12 +682,12 @@ type: Opaque
           instances:
             - name: ${ARGOCD_INSTANCE_NAME}
               url: ${ARGOCD_INSTANCE_URL}
-              username: ${ARGOCD_INSTANCE_NAME}
-              password: ${ARGOCD_INSTANCE_NAME}
+              username: ${ARGOCD_ADMIN_USERNAME}
+              password: ${ARGOCD_ADMIN_TOKEN}
 
     enabled:
       argocd: true #<--- enable the plugin here
-```
+``` 
 
  3. Upgrade the DevHub Helm values by adding the secret name `acm-backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
 
@@ -700,6 +696,42 @@ type: Opaque
       - rhdh-secret
       - backstage-k8s-plugin-secret
       - backstage-argocd-plugin-secret
+```
+
+### Configure ArgoCD to be able to pull protected GitHub Repos
+
+> when using Github Enterprise we noticed that ArgoCD requires credentials in order to clone gitops repositories
+
+You cand Add Git repo Templates so ArgoCD can clone repos within a Git Organization.
+
+1. create the following Secret inside the Openshift GitOps namespace (where your ArgoCD instance is installed)
+
+using the CLI
+``` sh
+oc create secret generic github-repo-teamplate-creds -n openshift-gitops \
+--from-literal=githubAppID=$GITHUB_APP_APP_ID \
+--from-literal=githubAppInstallationID='get from the Github Organization settings' \
+--from-literal=githubAppPrivateKey=$GITHUB_APP_PRIVATE_KEY_FILE \
+--from-literal=url='your github enterprise url'
+```
+
+using the Openshft Console
+``` yaml
+kind: Secret
+apiVersion: v1
+metadata:
+  name: github-repo-teamplate-creds
+  namespace: openshift-gitops
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+  annotations:
+    managed-by: argocd.argoproj.io
+stringData:
+  githubAppID: ${GITHUB_APP_APP_ID}
+  githubAppInstallationID: ${GITHUB_APP_INSTALATION_ID}
+  githubAppPrivateKey: >-
+    ${GITHUB_APP_PRIVATE_KEY_FILE}
+  url: 'your github enterprise url'
 ```
 
 ### Configuring OCM (Open Cluster Management) Plugin
