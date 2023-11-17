@@ -39,10 +39,8 @@
 ## External 3rd party Integrations
 * Source Control System
   * (Enterprise/hosted) GitHub `requires additional setup`
-  * (Enterprise/hosted) Gitlab `requires additional setup`
 * Continuous Integration
   * Github Actions
-  * Gitlab CI
 * Identity Provider
   * ❗**Requires OIDC support**
   *  Red Hat SSO (based on Keycloak) is recommended as an Access Manager and iDP broker
@@ -1077,7 +1075,7 @@ oc apply -f argocd/
 
 ## Creating a sample Golden Path Template (GPT)
 
-We'll be using [this repository](https://github.com/redhat-na-ssa/software-templates.git) as a reference to build a new GPT. So clone this repo locally as we'll be copying some manifests from it later in this step.
+We'll be using [this repository](https://github.com/redhat-na-ssa/software-templates/tree/no-vault) as a reference to build a new GPT. So clone this repo locally as we'll be copying some manifests from it later in this step.
 
 > NOTE: Golden Path Templates is also called [**Software Templates**](https://backstage.spotify.com/learn/onboarding-software-to-backstage/setting-up-software-templates/8-anatomy-software-template/) in the Backstage Project terminology. 
 
@@ -1106,11 +1104,15 @@ To build a new Template we need two elements: a **template.yaml manifest** and a
         ├── spring-boot-backend
 ```
 
-4. To make things easy lets copy some files from our [software-templates reference repo](https://github.com/redhat-na-ssa/software-templates.git).
+4. To make things easy lets copy some files from our [software-templates reference repo](https://github.com/redhat-na-ssa/software-templates/tree/no-vault).
+ * clone our sample repo to a temp dir in your local disk.
+   ```sh
+   git clone -b no-vault https://github.com/redhat-na-ssa/software-templates
+   ``` 
  * start by copying the `software-templates/skeletons/catalog-info/catalog-info.yaml` file into the same path in your `<org-name>-software-templates/`
  * now lets copy the Springboot Application **skeleton directory**. Copy the `software-templates/templates/github/spring-boot-backend` file into the same path in your `<org-name>-software-templates/`
  * here you can rename `spring-boot-backend` to any other name you may want to.
-6. Now lets inspect this Application **skeleton directory** to understand hos it's composed.
+5. Now lets inspect this Application **skeleton directory** to understand hos it's composed.
 
 ```
 ├── spring-boot-backend
