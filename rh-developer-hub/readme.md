@@ -113,7 +113,7 @@ export GITHUB_ORG_URL=https://$GITHUB_HOST_DOMAIN/$GITHUB_ORGANIZATION
     ![Install App](assets/org-install-app.png)
 
 4. source your `env.sh` file
-At this point your `env.sh` should looke like this
+At this point your `env.sh` should look like this
 
 ``` sh
 export OPENSHIFT_CLUSTER_INFO=$(oc cluster-info | head -n 1 | sed 's/^.*https...api//' | sed 's/.6443.*$//')
@@ -182,9 +182,9 @@ Create a secret containing all the Github Org/App info as key/value map
 #source all the env vars collected above
 source ./env.sh
 #delete the existing one
-oc delete secret rhdh-secret --ignore-not-found=true -n rhdh
+oc delete secret rhdh-github-plugin-secret --ignore-not-found=true -n rhdh
 #create a new one
-oc create secret generic rhdh-secret -n rhdh \
+oc create secret generic rhdh-github-plugin-secret -n rhdh \
 --from-literal=GITHUB_ORG_URL=$GITHUB_ORG_URL \
 --from-literal=GITHUB_APP_APP_ID=$GITHUB_APP_APP_ID \
 --from-literal=GITHUB_APP_CLIENT_ID=$GITHUB_APP_CLIENT_ID \
@@ -200,7 +200,7 @@ Your secret should look like this.
 kind: Secret
 apiVersion: v1
 metadata:
-  name: rhdh-secret
+  name: rhdh-github-plugin-secret
   namespace: rhdh
 stringData:
   GITHUB_APP_APP_ID: 
@@ -321,7 +321,7 @@ upstream:
       - name: NODE_TLS_REJECT_UNAUTHORIZED
         value: '0'     
     extraEnvVarsSecrets:
-      - rhdh-secret # DOUBLE CHECK THIS SECRET NAME!!!
+      - rhdh-github-plugin-secret # DOUBLE CHECK THIS SECRET NAME!!!
     image:
       debug: true
       pullPolicy: Always
@@ -567,7 +567,7 @@ subjects:
  > using the CLI
 
 ``` sh
-oc create secret generic backstage-k8s-plugin-secret -n rhdh \
+oc create secret generic rhdh-k8s-plugin-secret -n rhdh \
 --from-literal=K8S_CLUSTER_NAME='development-cluster' \
 --from-literal=K8S_CLUSTER_TOKEN='<ServiceAccount token from step 2>' \
 --from-literal=K8S_CLUSTER_URL=$K8S_CLUSTER_API
@@ -578,7 +578,7 @@ oc create secret generic backstage-k8s-plugin-secret -n rhdh \
 kind: Secret
 apiVersion: v1
 metadata:
-  name: backstage-k8s-plugin-secret
+  name: rhdh-k8s-plugin-secret
   namespace: rhdh
 stringData:
   K8S_CLUSTER_NAME: 'development-cluster'
@@ -605,7 +605,7 @@ data:
       customResources:
         # to view the Tekton PipelineRuns list in the side panel 
         # and to view the latest PipelineRun status in the Topology node decorator:
-        - group: 'tekton.dev'  #<---
+        - group: 'tekton.dev'
           apiVersion: 'v1beta1'
           plural: 'pipelines'
         - group: 'tekton.dev'
@@ -614,11 +614,9 @@ data:
         - group: 'tekton.dev'
           apiVersion: 'v1beta1'
           plural: 'taskruns'
-        # to view the edit code decorator:
         - group: 'org.eclipse.che'
           apiVersion: 'v2'
           plural: 'checlusters'
-        # to view the OpenShift route
         - group: 'route.openshift.io'
           apiVersion: 'v1'
           plural: 'routes'
@@ -631,12 +629,12 @@ data:
       kubernetes: true #<--- Here!
 ```
 
- 7. Upgrade the DevHub Helm values by adding the secret name `backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
+ 7. Upgrade the DevHub Helm values by adding the secret name `rhdh-k8s-plugin-secret` under `extraEnvVarsSecrets:`
 
 ```yaml
     extraEnvVarsSecrets:
-      - rhdh-secret
-      - backstage-k8s-plugin-secret # from step #5
+      - rhdh-github-plugin-secret
+      - rhdh-k8s-plugin-secret # from step #5
 ```
 
 ### Enabling Openshift GitOps (ArgoCD) Plugin
@@ -648,7 +646,7 @@ data:
  > using the CLI
 
 ``` sh
-oc create secret generic backstage-argocd-plugin-secret -n rhdh \
+oc create secret generic rhdh-argocd-plugin-secret -n rhdh \
 --from-literal=ARGOCD_INSTANCE_NAME='openshift-gitops' \
 --from-literal=ARGOCD_INSTANCE_URL='https://openshift-gitops-server-openshift-gitops.apps.yourclusterdomain' \
 --from-literal=ARGOCD_ADMIN_USERNAME='admin' \
@@ -660,7 +658,7 @@ oc create secret generic backstage-argocd-plugin-secret -n rhdh \
 kind: Secret
 apiVersion: v1
 metadata:
-  name: backstage-argocd-plugin-secret
+  name: rhdh-argocd-plugin-secret
   namespace: rhdh
 stringData:
   ARGOCD_INSTANCE_NAME: 'openshift-gitops'
@@ -687,13 +685,13 @@ stringData:
       argocd: true #<--- enable the plugin here
 ``` 
 
- 3. Upgrade the DevHub Helm values by adding the secret name `acm-backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
+ 3. Upgrade the DevHub Helm values by adding the secret name `rhdh-argocd-plugin-secret` under `extraEnvVarsSecrets:`
 
 ```yaml
     extraEnvVarsSecrets:
-      - rhdh-secret
-      - backstage-k8s-plugin-secret
-      - backstage-argocd-plugin-secret
+      - rhdh-github-plugin-secret
+      - rhdh-k8s-plugin-secret
+      - rhdh-argocd-plugin-secret
 ```
 
 ### Configure ArgoCD to be able to pull protected GitHub Repos
@@ -752,14 +750,14 @@ If ACM is installed in a different cluster then we need to perform the following
  > using the CLI
 
 ``` sh
-oc create sa ocm-rhdh-plugin -n rhdh
+oc create sa rhdh-ocm-plugin -n rhdh
 ```
 
 ```yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: ocm-rhdh-plugin
+  name: rhdh-ocm-plugin
   namespace: rhdh
 ```
 
@@ -767,7 +765,7 @@ metadata:
  > using the CLI
 
 ``` sh
-oc create token ocm-rhdh-plugin -n rhdh
+oc create token rhdh-ocm-plugin -n rhdh
 ```
 > Copy the token from the output and save it for later!
 
@@ -777,10 +775,10 @@ apiVersion: v1
 kind: Secret
 type: kubernetes.io/service-account-token
 metadata:
-  name: ocm-rhdh-plugin-secret
+  name: rhdh-ocm-plugin-secret
   namespace: rhdh
   annotations:
-    kubernetes.io/service-account.name: ocm-rhdh-plugin
+    kubernetes.io/service-account.name: rhdh-ocm-plugin
 ```
 
  3. Create a ClusterRole
@@ -790,7 +788,7 @@ metadata:
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: ocm-rhdh-plugin
+  name: rhdh-ocm-plugin
 rules:
   - apiGroups:
       - cluster.open-cluster-management.io
@@ -815,21 +813,21 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: ocm-rhdh-plugin
+  name: rhdh-ocm-plugin
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: ocm-rhdh-plugin
+  name: rhdh-ocm-plugin
 subjects:
   - kind: ServiceAccount
-    name: ocm-rhdh-plugin
+    name: rhdh-ocm-plugin
     namespace: rhdh
 ```
 5. Create a new Secret with the Cluster info for ACM
  > using the CLI
 
 ``` sh
-oc create secret generic backstage-ocm-plugin-secret -n rhdh \
+oc create secret generic rhdh-ocm-plugin-secret -n rhdh \
 --from-literal=ACM_K8S_CLUSTER_NAME='<ACM_HUB_ClusterName>>' \
 --from-literal=ACM_K8S_CLUSTER_TOKEN='<ServiceAccount token from step 2>' \
 --from-literal=ACM_K8S_CLUSTER_URL='<<HUB API URL for Openshift>>'
@@ -841,7 +839,7 @@ oc create secret generic backstage-ocm-plugin-secret -n rhdh \
 kind: Secret
 apiVersion: v1
 metadata:
-  name: backstage-ocm-plugin-secret
+  name: rhdh-ocm-plugin-secret
   namespace: rhdh
 stringData:
   ACM_K8S_CLUSTER_NAME: 'hub-cluster'
@@ -873,14 +871,14 @@ type: Opaque
        enabled:
           ocm: true
   ```
-  > Upgrade the DevHub Helm values by adding the secret name `acm-backstage-k8s-plugin-secret` under `extraEnvVarsSecrets:`
+  > Upgrade the DevHub Helm values by adding the secret name `rhdh-ocm-plugin-secret` under `extraEnvVarsSecrets:`
 
   ```yaml
       extraEnvVarsSecrets:
-        - rhdh-secret
-        - backstage-k8s-plugin-secret
-        - backstage-argocd-plugin-secret
-        - backstage-ocm-plugin-secret
+        - rhdh-github-plugin-secret
+        - rhdh-k8s-plugin-secret
+        - rhdh-argocd-plugin-secret
+        - rhdh-ocm-plugin-secret
   ```
 
 7. Update app-config-rhdh.yaml only when ACM is installed on same cluster as RHDH If not please ignore this step.
@@ -927,7 +925,7 @@ type: Opaque
    export QUAY_URL=<Quay URL> #eg. https://quay.io
    export QUAY_BEARER_TOKEN=<Quay token from the oauth App>
 
-   oc create secret generic backstage-quay-plugin-secret -n rhdh \
+   oc create secret generic rhdh-quay-plugin-secret -n rhdh \
    --from-literal QUAY_URL=${QUAY_URL} \
    --from-literal QUAY_BEARER_TOKEN=${QUAY_BEARER_TOKEN}
 ```
@@ -963,11 +961,11 @@ type: Opaque
 
 ```yaml
      extraEnvVarsSecrets:
-        - rhdh-secret
-        - backstage-k8s-plugin-secret
-        - backstage-argocd-plugin-secret
-        - backstage-ocm-plugin-secret
-        - backstage-quay-plugin-secret
+        - rhdh-github-plugin-secret
+        - rhdh-k8s-plugin-secret
+        - rhdh-argocd-plugin-secret
+        - rhdh-ocm-plugin-secret
+        - rhdh-quay-plugin-secret
 ```
 
 4. to be able to pull info from Quay container registry you need to add the following annotation in your app's `catalog-info.yaml` manifest:
@@ -1031,10 +1029,10 @@ We have prepared an sample Springboot backend App that we'll be using as a **&CI
 #make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
 oc apply -f argocd/
 ```
-1. Open the ArgoCD console and select the `my-springboot-app-bootstrap` Application.
+6. Open the ArgoCD console and select the `my-springboot-app-bootstrap` Application.
    * Click on the button `APP DETAILS`, scrool the screen down to `SYNC POLICY` section and click `DISABLE AUTO-SYNC`, then `OK`.
 
-2. Now, open the ArgoCD console and select the `my-springboot-app-dev-build` Application.
+7. Now, open the ArgoCD console and select the `my-springboot-app-dev-build` Application.
    * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
 
   ![Secrets values parameters](assets/argocd-app-params.png)
@@ -1043,7 +1041,7 @@ oc apply -f argocd/
   
    > :exclamation: NOTE: **on production use a Vault mechanism to manage these secrets!!!** :exclamation:
 
-3. Create a webhook to trigger Openshift Piplines automatically
+8. Create a webhook to trigger Openshift Piplines automatically
  * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
    * Payload URL: https://webhook-my-springboot-app-el-my-springboot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
@@ -1055,12 +1053,12 @@ oc apply -f argocd/
    * Mark `Active`
    * Create webhook
 
-4. open the rhdh-springboot-smoke-test on an IDE and 
+9. open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
  * a new Pipeline Run should be triggered automatically
 
-5. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
+10. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
  * On Developer Hub, click on the `Create` lef menu item.
 
   ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
@@ -1071,7 +1069,7 @@ oc apply -f argocd/
 
  * Then create the Entity. It should apper in the `Catalog` view.
 
-6. Check the Kubernetes, Tekton, Registry (Quay) views for this Application Entity on Developer Hub to see if all the integrations are working and the data is being properly pulled from the external sources.
+11. Check the Kubernetes, Tekton, Registry (Quay) views for this Application Entity on Developer Hub to see if all the integrations are working and the data is being properly pulled from the external sources.
 
 ---
 
@@ -1414,7 +1412,7 @@ spec:
 9. Testing Quay Registry
   ```sh
      podman pull docker.io/redis
-     podman login -u <<user>> <<quay-url>>   # <<user>>/<<password>> is from setup 6 and <<quay-url>> is from the installed quay route
+     podman login -u <<user>> <<quay-url>> # <<user>>/<<password>> is from setup 6 and <<quay-url>> is from the installed quay route
      podman tag docker.io/redis <<quay-url>>/<<orgname>>/redis
      podman push <<quay-url>>/<<orgname>>/redis
      aws configure
@@ -1470,11 +1468,11 @@ spec:
 
     ```yaml
         extraEnvVarsSecrets:
-          - rhdh-secret
-          - backstage-k8s-plugin-secret
-          - backstage-argocd-plugin-secret
-          - backstage-ocm-plugin-secret
-          - backstage-quay-plugin-secret
+          - rhdh-github-plugin-secret
+          - rhdh-k8s-plugin-secret
+          - rhdh-argocd-plugin-secret
+          - rhdh-ocm-plugin-secret
+          - rhdh-quay-plugin-secret
     ```
 </hr>    
 
