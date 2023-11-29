@@ -1031,8 +1031,10 @@ We have prepared an sample Springboot backend App that we'll be using as a **&CI
 #make sure you're logged into the Openshift Cluster hosting ArgoCD (Openshif Pipelines)
 oc apply -f argocd/
 ```
+1. Open the ArgoCD console and select the `my-springboot-app-bootstrap` Application.
+   * Click on the button `APP DETAILS`, scrool the screen down to `SYNC POLICY` section and click `DISABLE AUTO-SYNC`, then `OK`.
 
-1. Open the ArgoCD console and selec the `spring-boot-app-dev-build` Application.
+2. Now, open the ArgoCD console and select the `my-springboot-app-dev-build` Application.
    * Click on the button `APP DETAILS` and then click on the `PARAMETERS` tab, like in this screenshot
 
   ![Secrets values parameters](assets/argocd-app-params.png)
@@ -1041,9 +1043,9 @@ oc apply -f argocd/
   
    > :exclamation: NOTE: **on production use a Vault mechanism to manage these secrets!!!** :exclamation:
 
-1. Create a webhook to trigger Openshift Piplines automatically
+3. Create a webhook to trigger Openshift Piplines automatically
  * Go to https://github.com/your-org-here/rhdh-springboot-smoke-test/settings/hooks
-   * Payload URL: https://webhook-spring-boot-app-el-spring-boot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
+   * Payload URL: https://webhook-my-springboot-app-el-my-springboot-app-dev.apps.your-cluster-domain.com (copy from the tekton event listener route inside the app dev namespace)
    * Content type: `application/json`
    * Secret: enter any random string
    * SSL verification: Disabled
@@ -1053,12 +1055,12 @@ oc apply -f argocd/
    * Mark `Active`
    * Create webhook
 
-2. open the rhdh-springboot-smoke-test on an IDE and 
+4. open the rhdh-springboot-smoke-test on an IDE and 
  * make ay change to the src code.
  * save, commmit and push
  * a new Pipeline Run should be triggered automatically
 
-3. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
+5. Now, import the `rhdh-springboot-smoke-test` repo as an Entity into Developer Hub.
  * On Developer Hub, click on the `Create` lef menu item.
 
   ![Secrets values parameters](assets/springboot-app-catalog-onboard1.png)
@@ -1069,7 +1071,7 @@ oc apply -f argocd/
 
  * Then create the Entity. It should apper in the `Catalog` view.
 
-4. Check the Kubernetes, Tekton, Registry (Quay) views for this Application Entity on Developer Hub to see if all the integrations are working and the data is being properly pulled from the external sources.
+6. Check the Kubernetes, Tekton, Registry (Quay) views for this Application Entity on Developer Hub to see if all the integrations are working and the data is being properly pulled from the external sources.
 
 ---
 
