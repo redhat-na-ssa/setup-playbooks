@@ -1083,7 +1083,7 @@ Every Software Template is taylored to a specific Development Environment and it
 
 The Template we'll be building here is composed by the following actions:
  * Source Code and GitOps manifests repositories creation on Github
- * Sample Springboot backend App suing Apache Maven for building
+ * Sample Springboot backend App using Apache Maven for building
  * CI pipeline using Tekton
  * CD Pipeline using ArgoCD
  * Quay Container Registry 
@@ -1145,7 +1145,7 @@ To build a new Template we need two elements: a **template.yaml manifest** and a
   
  > For more details on Backstage Software Template Kind defnition see https://backstage.io/docs/features/software-catalog/descriptor-format/#kind-template
 
-8. Your Template's **actions** will define what set of **parameters** you will need. So, first you need to decide/define which acttions will be performed by this template. In our sample template we perform the following actions (see the `steps` section in the `template.yaml` manifest):
+8. Your Template's **actions** will define what set of **parameters** you will need. So, first you need to decide/define which actions will be performed by this template. In our sample template we perform the following actions (see the `steps` section in the `template.yaml` manifest):
  * `sourceCodeTemplate`: Generating the Source Code Component
  * `catalogTemplate`: Generating the Catalog Info Component
  * `publish`: Publishing to the Source Code Repository
