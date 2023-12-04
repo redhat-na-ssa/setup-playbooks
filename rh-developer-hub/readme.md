@@ -1079,6 +1079,16 @@ We'll be using [this repository](https://github.com/redhat-na-ssa/software-templ
 
 > NOTE: Golden Path Templates is also called [**Software Templates**](https://backstage.spotify.com/learn/onboarding-software-to-backstage/setting-up-software-templates/8-anatomy-software-template/) in the Backstage Project terminology. 
 
+### Using the Template Editor UI
+
+While implementing or customizing your own Software Template you can leverage the *Template Editor* functionality available in the UI. See below how to access it.
+
+![Backstage Template editor](assets/backstage-template-editor.gif "Template Editor")
+
+> NOTE: make sure you choose 'Load from a directory' to load this git repo from your local file system and point it to the root of this repo. Any change you make using the web editor will base saved only in your file system.
+
+### Extending/Customizing the Template
+
 Every Software Template is taylored to a specific Development Environment and its Software Development Life Cycle processes.
 
 The Template we'll be building here is composed by the following actions:
