@@ -2,6 +2,7 @@
 
 > :exclamation: NOTE: *the following instructions outlined here are not intended for building a production-ready environment! It is intended to build a PoC leveraging Red Hat Openshift DevSecOps offerings.* 
 > This is a live document, so make sure you refresh this page to see the latest version!
+> The instructions described here applies to Red Hat Developer Hub version **0.2** (**Developer Preview**)
 
 ## Openshift Cluster Checklist
 
