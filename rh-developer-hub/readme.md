@@ -1433,31 +1433,39 @@ spec:
 </hr>
 
 # Customizing Logo and Themes.
+**Pre Step: Stop ArgoCD from syncing**
+> Note : Follow this step **ONLY** if you're using the RH Trusted Application Pipeline demo environment.
+
+ - In your OpenShift console, switch to "openshift-gitops" project, click Networking > Routes, and click on the "argocd-server" link, to open your ArgoCD server.
+ - In the ArgoCD server, turn off the AutoSync for these 2 applications: "backstage-gitope" and "backstage". To do so, click on the App Details > Summary > Sync Policy > Disable AutoSync      
+
+**Step 1: Add the logo file**
+
 > Note : Logo's can be added with from svg or image. We need a base64 version of the svg/image
 
 1. Get the logo as svg/image and save it as a file e.g logo.txt
-2. convert to base64
+2. Convert to base64 format
   ```sh
       cat logo.txt | base64 > logo_base64.txt
   ```
-3. prefix the following content `data:image/png;base64,` or  `data:image/svg+xml;base64,` depending on image or svg to base64 file
-4. create a secret named logo-secret (key/value secret)
-   > Note: Create through console don't use the below yaml this is just for reference
+3. Prefix the following content `data:image/png;base64,` or  `data:image/svg+xml;base64,` depending on image or svg to base64 file
+   > Note : Open the logo_base64.txt file in your IDE and add the prefix to the begining of the file 
+
+**Step 2: Create a secret named logo-secret (key/value secret)**
+
+4. Open your OpenShift web console, navigate to 'backstage' project, click on Workloads > Secrets > click Create Key/Value secret
+   - Secret name: logo-secret
+   - Key: BASE64_EMBEDDED_FULL_LOGO
+   - Value: *content of logo_base64.txt* (the content you created on step 3)
+
+**Step 3: Update the theme**
+
+6. Add the following content on app-config-rhdh.yaml
+   - To do so, open your OpenShift web console, navigate to 'backstage' project, click on Workloads > ConfigMaps > backstage-app-config 
+   - Go to YAML view
+   - Under the *app:* section add the following content, and click save.
 
    ```yaml
-      kind: Secret
-      apiVersion: v1
-      metadata:
-        name: logo-secret
-        namespace: rhdh
-      stringData:
-        BASE64_EMBEDDED_FULL_LOGO: <<content of logo_base64.txt>>
-      type: Opaque
-   ``` 
-5. Add the following content on app-config-rhdh.yaml
-
-   ```yaml
-      app:
         title : Red Hat Developer Hub
         branding:
           fullLogo: ${BASE64_EMBEDDED_FULL_LOGO}
@@ -1474,8 +1482,13 @@ spec:
             headerColor2: 'rgb(255 246 140)'
             navigationIndicatorColor: '#f4eea9' 
    ```
+**Step 4: Redeploy the pod with new secrets**
 
-6. Upgrade the helm deployment by including this logo-secret under  extraEnvVarsSecrets
+8. Inject the secret into your deployment
+   - In your OpenShift console, click on Workloads > Deployments
+   - In the "All values from existing ConfigMaps or Secrets" section, add "logo-secret" and save it (This will redeploy the pod with your updated logo and styles. This takes few minutes to redeploy)
+
+Or upgrade the helm deployment by including this logo-secret under  extraEnvVarsSecrets
 
     ```yaml
         extraEnvVarsSecrets:
