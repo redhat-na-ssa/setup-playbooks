@@ -1,16 +1,3 @@
----
-apiVersion: backstage.io/v1alpha1
-kind: Group
-metadata:
-  name: rhdh-demo
-  description: Red Hat Developer Hub
-spec:
-  type: team
-  profile:
-    # Intentional no displayName for testing
-    email: rhdh-demo@opentlc.com
-    picture: https://avatars.dicebear.com/api/identicon/team-a@example.com.svg?background=%23fff&margin=25
-  children: []
 ---  
 apiVersion: backstage.io/v1alpha1
 kind: User
@@ -23,3 +10,16 @@ spec:
     picture: https://avatars.dicebear.com/api/avataaars/breanna-davison@example.com.svg?background=%23fff
   memberOf: [rhdh-demo]
 ---  
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: rhdh-demo
+  description: Red Hat Developer Hub
+spec:
+  type: team
+  profile:
+    # Intentional no displayName for testing
+    email: rhdh-demo@opentlc.com
+    picture: https://avatars.dicebear.com/api/identicon/team-a@example.com.svg?background=%23fff&margin=25
+  children: []
+---
