@@ -1,0 +1,5 @@
+npm install -g @techdocs/cli
+techdocs-cli serve
+
+#Tech radar CI/CD image name
+techdocs-cli serve --docker-image quay.io/redhat-gpte/techdocs-cli --docker-entrypoint "mkdocs"

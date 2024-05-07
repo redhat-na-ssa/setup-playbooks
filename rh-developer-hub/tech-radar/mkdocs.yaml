@@ -1,0 +1,15 @@
+site_name: My quarkus Application
+site_description: A cool quarkus app
+repo_url: https://gitlab-gitlab.apps.cluster-x9knk.sandbox1423.opentlc.com/development/my-quarkus-app
+edit_uri: edit/master/docs
+
+plugins:
+  - techdocs-core
+
+# Note for content editors, edit only the section below
+nav:
+  - Onboard a developer to OpenShift: onboard-openshift.md
+  - Application Migration:
+      - Migration Process Overview: application-migration/migration-process-overview.md
+      - Migration Process Steps: application-migration/migration-process-steps.md
+      - Learning Path for Developers: application-migration/learning-path-for-developers.md
